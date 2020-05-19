@@ -29,13 +29,13 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
     data = pd.read_csv(dataset_path,na_values='NA',sep=',')
 
     if export_initial_analysis == "True":
-        data.describe().to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DescribeDataset.csv')
-        data.dtypes.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DtypesDataset.csv')
+        #data.describe().to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DescribeDataset.csv')
+        #data.dtypes.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DtypesDataset.csv')
         data.nunique().to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'NumUniqueDataset.csv')
 
         #Assess Missingness in Attributes
         missing_count = data.isnull().sum()
-        missing_count.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'MissingnessHistogram.csv')
+        missing_count.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'FeatureMissingness.csv')
 
     #Remove instances with missing outcome values
     data = data.dropna(axis=0,how='any',subset=[class_label])
@@ -86,9 +86,10 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
         pval_df.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/univariate/Significance.csv',index=True)
 
         sorted_p_list = sorted(p_value_dict.items(),key = lambda item:item[1])
+        sig_cutoff = 0.05
         for i in sorted_p_list:
             for j in data:
-                if j == i[0]:
+                if j == i[0] and i[1] <= sig_cutoff: #ONLY EXPORTS SIGNIFICANT FEATURES
                     graph_selector(j,class_label,data,categorical_variables,experiment_path,dataset_name)
 
     #Get and Export Original Headers

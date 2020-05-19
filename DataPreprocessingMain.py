@@ -17,7 +17,7 @@ def main(argv):
     parser.add_argument('--data-path',dest='data_path',type=str,help='path to directory containing datasets')
     parser.add_argument('--output-path',dest='output_path',type=str,help='path to output directory')
     parser.add_argument('--experiment-name', dest='experiment_name',type=str, help='name of experiment (no spaces)')
-    parser.add_argument('--cv',dest='cv_partitions',type=int,help='number of CV partititions',default=3)
+    parser.add_argument('--cv',dest='cv_partitions',type=int,help='number of CV partitions',default=3)
     parser.add_argument('--partition-method',dest='partition_method',type=str,help='S or R or M',default="S")
     parser.add_argument('--scale-data',dest='scale_data',type=str,default="True")
     parser.add_argument('--impute-data', dest='impute_data',type=str,default="True")

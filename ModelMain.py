@@ -69,10 +69,10 @@ def main(argv):
 
     # Argument checks
     if not os.path.exists(output_path):
-        raise Exception("Output path must exist (from phase 1) before phase 3 can begin")
+        raise Exception("Output path must exist (from phase 1) before phase 4 can begin")
 
     if not os.path.exists(output_path + '/' + experiment_name):
-        raise Exception("Experiment must exist (from phase 1) before phase 3 can begin")
+        raise Exception("Experiment must exist (from phase 1) before phase 4 can begin")
 
     metadata = pd.read_csv(output_path + '/' + experiment_name + '/' + 'metadata.csv').values
 

@@ -475,7 +475,7 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
         compound_FI_plot(weightedFracLists, algorithms, list(colors.values()), all_feature_listToViz, 'Norm_Frac_Weight',full_path)
 
     # Save Runtime
-    runtime_file = open(full_path + '/runtime/runtime_Stats', 'w')
+    runtime_file = open(full_path + '/runtime/runtime_Stats.txt', 'w')
     runtime_file.write(str(time.time() - job_start_time))
     runtime_file.close()
 
@@ -484,7 +484,9 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
     for file_path in glob.glob(full_path+'/runtime/*.txt'):
         f = open(file_path,'r')
         val = float(f.readline())
-        ref = file_path.split('/')[-1].split('_')[1]
+        ref = file_path.split('/')[-1].split('_')[1].split('.')[0]
+        if ref in abbrev:
+            ref = abbrev[ref]
         if not ref in dict:
             dict[ref] = val
         else:
