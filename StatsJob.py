@@ -18,7 +18,8 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
     data_name = full_path.split('/')[-1]
 
     #Create Directory
-    os.mkdir(full_path+'/training/results')
+    if not os.path.exists(full_path+'/training/results'):
+        os.mkdir(full_path+'/training/results')
 
     #Decode algos
     algorithms = []
@@ -75,7 +76,6 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
             file = open(result_file, 'rb')
             results = pickle.load(file)
             file.close()
-            os.remove(result_file) #Clean up pickled files
 
             metricList = results[0]
             fpr = results[1]
@@ -258,7 +258,8 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
     file.close()
 
     #Save boxplots for each metrics
-    os.mkdir(full_path + '/training/results/performanceBoxplots')
+    if not os.path.exists(full_path + '/training/results/performanceBoxplots'):
+        os.mkdir(full_path + '/training/results/performanceBoxplots')
     for metric in metrics:
         tempList = []
         for algorithm in algorithms:
@@ -277,7 +278,8 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
 
     #Save Kruskal Wallis and Mann Whitney Stats
     if len(algorithms) > 1:
-        os.mkdir(full_path + '/training/results/KWMW')
+        if not os.path.exists(full_path + '/training/results/KWMW'):
+            os.mkdir(full_path + '/training/results/KWMW')
         label = ['statistic', 'pvalue', 'sig']
         kruskal_summary = pd.DataFrame(index=metrics, columns=label)
         sig_cutoff = 0.05
@@ -491,19 +493,18 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
             dict[ref] = val
         else:
             dict[ref] += val
-        os.remove(file_path)
 
     with open(full_path+'/runtimes.csv',mode='w') as file:
         writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for key,value in dict.items():
             writer.writerow([key+str(' total runtime'),value])
-    os.rmdir(full_path+'/runtime')
-
-    #Clean up Files
-    os.remove(full_path + '/preprocessing/OriginalHeaders.csv')
 
     # Print completion
     print(data_name + " phase 5 complete")
+    experiment_path = '/'.join(full_path.split('/')[:-1])
+    job_file = open(experiment_path + '/jobsCompleted/job_stats_' + data_name + '.txt', 'w')
+    job_file.write('complete')
+    job_file.close()
 
 def save_performance(algorithm,results,full_path):
     dr = pd.DataFrame(results)

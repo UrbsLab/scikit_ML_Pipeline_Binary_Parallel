@@ -83,11 +83,14 @@ def main(argv):
     dataset_paths = os.listdir(output_path + "/" + experiment_name)
     dataset_paths.remove('logs')
     dataset_paths.remove('jobs')
+    dataset_paths.remove('jobsCompleted')
     dataset_paths.remove('metadata.csv')
     for dataset_directory_path in dataset_paths:
         full_path = output_path + "/" + experiment_name + "/" + dataset_directory_path
-        os.mkdir(full_path+'/training')
-        os.mkdir(full_path+'/training/pickledModels')
+        if not os.path.exists(full_path+'/training'):
+            os.mkdir(full_path+'/training')
+        if not os.path.exists(full_path+'/training/pickledModels'):
+            os.mkdir(full_path+'/training/pickledModels')
         cvPartitions = int(len(glob.glob(full_path + '/CVDatasets/*.csv')) / 2)
         for cvCount in range(cvPartitions):
             train_file_path = full_path+'/CVDatasets/'+dataset_directory_path+"_CV_"+str(cvCount)+"_Train.csv"
@@ -97,20 +100,21 @@ def main(argv):
                 #submitClusterJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,plot_hyperparam_sweep,instance_label,class_label,random_state,output_path+'/'+experiment_name,cvCount)
 
     # Update metadata
-    with open(output_path + '/' + experiment_name + '/' + 'metadata.csv', mode='a') as file:
-        writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(["LR", options.do_LR])
-        writer.writerow(["DT", options.do_DT])
-        writer.writerow(["RF", options.do_RF])
-        writer.writerow(["NB", options.do_NB])
-        writer.writerow(["XGB", options.do_XGB])
-        writer.writerow(["LGB", options.do_LGB])
-        writer.writerow(["SVM", options.do_SVM])
-        writer.writerow(["ANN", options.do_ANN])
-        writer.writerow(["ExSTraCS", options.do_ExSTraCS])
-        writer.writerow(["eLCS", options.do_eLCS])
-        writer.writerow(["XCS", options.do_XCS])
-    file.close()
+    if metadata.shape[0] == 5:  # Only update if metadata below hasn't been added before (i.e. in a previous phase 4 run)
+        with open(output_path + '/' + experiment_name + '/' + 'metadata.csv', mode='a') as file:
+            writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(["LR", options.do_LR])
+            writer.writerow(["DT", options.do_DT])
+            writer.writerow(["RF", options.do_RF])
+            writer.writerow(["NB", options.do_NB])
+            writer.writerow(["XGB", options.do_XGB])
+            writer.writerow(["LGB", options.do_LGB])
+            writer.writerow(["SVM", options.do_SVM])
+            writer.writerow(["ANN", options.do_ANN])
+            writer.writerow(["ExSTraCS", options.do_ExSTraCS])
+            writer.writerow(["eLCS", options.do_eLCS])
+            writer.writerow(["XCS", options.do_XCS])
+        file.close()
 
 def submitLocalJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,plot_hyperparam_sweep,instance_label,class_label,random_state,cvCount):
     ModelJob.job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,plot_hyperparam_sweep,instance_label,class_label,random_state,cvCount)

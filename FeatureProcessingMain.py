@@ -44,26 +44,30 @@ def main(argv):
     dataset_paths = os.listdir(output_path+"/"+experiment_name)
     dataset_paths.remove('logs')
     dataset_paths.remove('jobs')
+    dataset_paths.remove('jobsCompleted')
     dataset_paths.remove('metadata.csv')
     for dataset_directory_path in dataset_paths:
         full_path = output_path+"/"+experiment_name+"/"+dataset_directory_path
         if do_mutual_info == 'True':
-            os.mkdir(full_path+"/MutualInformation")
+            if not os.path.exists(full_path+"/MutualInformation"):
+                os.mkdir(full_path+"/MutualInformation")
             for cv_filename in glob.glob(full_path+"/CVDatasets/*Train.csv"):
                 submitLocalMIJob(cv_filename,random_state,output_path+'/'+experiment_name,class_label,instance_label)
                 #submitClusterMIJob(cv_filename,random_state,output_path+'/'+experiment_name,class_label,instance_label)
         if do_multiSURF == 'True':
-            os.mkdir(full_path + "/MultiSURF")
+            if not os.path.exists(full_path + "/MultiSURF"):
+                os.mkdir(full_path + "/MultiSURF")
             for cv_filename in glob.glob(full_path+"/CVDatasets/*Train.csv"):
                 submitLocalMSJob(cv_filename,instance_subset,random_state,output_path+'/'+experiment_name,class_label,instance_label)
                 #submitClusterMSJob(cv_filename,instance_subset,random_state,output_path+'/'+experiment_name,class_label,instance_label)
 
     #Update metadata
-    with open(output_path + '/' + experiment_name + '/' + 'metadata.csv',mode='a') as file:
-        writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(["Do Mutual Info",do_mutual_info])
-        writer.writerow(["Do MultiSURF", do_multiSURF])
-    file.close()
+    if metadata.shape[0] == 3: #Only update if metadata below hasn't been added before (i.e. in a previous phase 2 run)
+        with open(output_path + '/' + experiment_name + '/' + 'metadata.csv',mode='a') as file:
+            writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(["Do Mutual Info",do_mutual_info])
+            writer.writerow(["Do MultiSURF", do_multiSURF])
+        file.close()
 
 def submitLocalMIJob(trainfile_path,random_state,experiment_path,class_label,instance_label):
     FeatureProcessingJob.miJob(trainfile_path,random_state,experiment_path,class_label,instance_label)

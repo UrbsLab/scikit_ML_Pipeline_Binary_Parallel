@@ -72,6 +72,7 @@ def main(argv):
     os.mkdir(output_path+'/'+experiment_name)
     os.mkdir(output_path+'/'+experiment_name+'/jobs')
     os.mkdir(output_path+'/'+experiment_name+'/logs')
+    os.mkdir(output_path+'/'+ experiment_name+'/jobsCompleted')
 
     #Check that there is at least 1 dataset
     if len(glob.glob(data_path+'/*.csv')) == 0:

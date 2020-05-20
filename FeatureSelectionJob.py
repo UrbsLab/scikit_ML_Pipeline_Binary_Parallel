@@ -5,7 +5,6 @@ import glob
 import pickle
 import copy
 import pandas as pd
-import shutil
 import os
 import csv
 import sys
@@ -51,9 +50,6 @@ def job(full_path,do_mutual_info,do_multiSURF,max_features_to_keep,filter_poor_f
         if graph_scores == 'True':
             reportTopFS(scoreSum,"Mutual Information",cvPartitions,top_results,full_path)
 
-        # Remove pickled files (clean up)
-        shutil.rmtree(full_path + "/MutualInformation/pickledForPhase3")
-
     # Graph Average FI scores for MS
     if do_multiSURF == 'TRUE' or do_multiSURF == 'True':
         algorithms.append('MultiSURF')
@@ -87,9 +83,6 @@ def job(full_path,do_mutual_info,do_multiSURF,max_features_to_keep,filter_poor_f
         if graph_scores == 'True':
             reportTopFS(scoreSum, "MultiSURF", cvPartitions, top_results, full_path)
 
-        #Remove pickled files (clean up)
-        shutil.rmtree(full_path + "/MultiSURF/pickledForPhase3")
-
     #Filter Scores and replace old CV files
     cv_selected_list = selectFeatures(algorithms,cvPartitions,selected_feature_lists,max_features_to_keep,meta_feature_ranks)
     dataset_name = full_path.split('/')[-1]
@@ -103,6 +96,10 @@ def job(full_path,do_mutual_info,do_multiSURF,max_features_to_keep,filter_poor_f
 
     # Print completion
     print(dataset_name + " phase 3 complete")
+    experiment_path = '/'.join(full_path.split('/')[:-1])
+    job_file = open(experiment_path + '/jobsCompleted/job_featureSelection_' + dataset_name + '.txt', 'w')
+    job_file.write('complete')
+    job_file.close()
 
 def reportTopFS(scoreSum, algorithm, cv_partitions, topResults,full_path):
     # Make the sum of scores an average

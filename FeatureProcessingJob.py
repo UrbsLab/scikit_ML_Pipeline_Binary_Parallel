@@ -41,6 +41,9 @@ def miJob(trainfile_path,random_state,experiment_path,class_label,instance_label
 
     # Print completion
     print(dataset_name+" CV"+str(cvCount)+" phase 2 Mutual Information Evaluation complete")
+    job_file = open(experiment_path + '/jobsCompleted/job_mutualInformation_' + dataset_name + '_'+str(cvCount)+'.txt', 'w')
+    job_file.write('complete')
+    job_file.close()
 
 def sort_save_fi_scores(scores, ordered_feature_names, filename):
     # Put list of scores in dictionary
@@ -114,6 +117,9 @@ def msJob(trainfile_path,instance_subset,random_state,experiment_path,class_labe
 
     # Print completion
     print(dataset_name + " CV" + str(cvCount) + " phase 2 MultiSURF Evaluation complete")
+    job_file = open(experiment_path + '/jobsCompleted/job_multiSURF_' + dataset_name + '_' + str(cvCount) + '.txt', 'w')
+    job_file.write('complete')
+    job_file.close()
 
 def run_multisurf(xTrain, yTrain, cv_count, data_name, output_folder, ordered_feature_names):
     # Run multisurf

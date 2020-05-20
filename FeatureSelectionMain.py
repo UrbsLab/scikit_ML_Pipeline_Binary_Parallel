@@ -45,6 +45,7 @@ def main(argv):
     dataset_paths = os.listdir(output_path + "/" + experiment_name)
     dataset_paths.remove('logs')
     dataset_paths.remove('jobs')
+    dataset_paths.remove('jobsCompleted')
     dataset_paths.remove('metadata.csv')
     for dataset_directory_path in dataset_paths:
         full_path = output_path + "/" + experiment_name + "/" + dataset_directory_path

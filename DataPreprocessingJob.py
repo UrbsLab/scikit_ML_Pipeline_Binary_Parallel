@@ -24,8 +24,10 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
     np.random.seed(random_state)
 
     dataset_name = dataset_path.split('/')[-1].split('.')[0]
-    os.mkdir(experiment_path + '/' + dataset_name)
-    os.mkdir(experiment_path + '/' + dataset_name + '/preprocessing')
+    if not os.path.exists(experiment_path + '/' + dataset_name):
+        os.mkdir(experiment_path + '/' + dataset_name)
+    if not os.path.exists(experiment_path + '/' + dataset_name + '/preprocessing'):
+        os.mkdir(experiment_path + '/' + dataset_name + '/preprocessing')
     data = pd.read_csv(dataset_path,na_values='NA',sep=',')
 
     if export_initial_analysis == "True":
@@ -75,7 +77,8 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
         plt.close('all')
     #Univariate
     if export_univariate:
-        os.mkdir(experiment_path + '/' + dataset_name + '/preprocessing/univariate')
+        if not os.path.exists(experiment_path + '/' + dataset_name + '/preprocessing/univariate'):
+            os.mkdir(experiment_path + '/' + dataset_name + '/preprocessing/univariate')
         p_value_dict = {}
         for column in data:
             if column != class_label and column != instance_label:
@@ -118,7 +121,8 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
         train_dfs,test_dfs = imputeCVData(class_label,instance_label,categorical_variables,headers,train_dfs,test_dfs,random_state)
 
     #Save CV'd data as .csv files
-    os.mkdir(experiment_path + '/' + dataset_name + '/CVDatasets')
+    if not os.path.exists(experiment_path + '/' + dataset_name + '/CVDatasets'):
+        os.mkdir(experiment_path + '/' + dataset_name + '/CVDatasets')
     counter = 0
     for each in train_dfs:
         a = each.values
@@ -141,13 +145,18 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
         counter += 1
 
     #Save Runtime
-    os.mkdir(experiment_path + '/' + dataset_name + '/runtime')
+    if not os.path.exists(experiment_path + '/' + dataset_name + '/runtime'):
+        os.mkdir(experiment_path + '/' + dataset_name + '/runtime')
     runtime_file = open(experiment_path + '/' + dataset_name + '/runtime/runtime_Preprocessing.txt','w')
     runtime_file.write(str(time.time()-job_start_time))
     runtime_file.close()
 
     #Print completion
     print(dataset_name+" phase 1 complete")
+    job_file = open(experiment_path + '/jobsCompleted/job_preprocessing_'+dataset_name+'.txt', 'w')
+    job_file.write('complete')
+    job_file.close()
+
 
 ########Univariate##############
 def test_selector(featureName, outcomeLabel, td, categorical_variables):

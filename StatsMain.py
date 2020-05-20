@@ -67,14 +67,12 @@ def main(argv):
     dataset_paths = os.listdir(output_path + "/" + experiment_name)
     dataset_paths.remove('logs')
     dataset_paths.remove('jobs')
+    dataset_paths.remove('jobsCompleted')
     dataset_paths.remove('metadata.csv')
     for dataset_directory_path in dataset_paths:
         full_path = output_path + "/" + experiment_name + "/" + dataset_directory_path
         submitLocalJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label)
-        #submitClusterJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,output_path+'/'+experiment_name,class_label,instance_label)
-
-    #Clean up files
-    os.remove(output_path+'/'+experiment_name+'/metadata.csv')
+        #submitClusterJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,output_path+'/'+experiment_name)
 
 def submitLocalJob(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label):
     StatsJob.job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label)

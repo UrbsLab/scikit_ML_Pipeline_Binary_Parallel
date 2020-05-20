@@ -89,6 +89,10 @@ def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_
 
     # Print completion
     print(full_path.split('/')[-1] + " CV" + str(cvCount) + " phase 4 "+abbrev[algorithm]+" training complete")
+    experiment_path = '/'.join(full_path.split('/')[:-1])
+    job_file = open(experiment_path + '/jobsCompleted/job_model_' + full_path.split('/')[-1] + '_' + str(cvCount) +'_' +abbrev[algorithm]+'.txt', 'w')
+    job_file.write('complete')
+    job_file.close()
 
 def hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric):
     cv = StratifiedKFold(n_splits=hype_cv, shuffle=True, random_state=randSeed)
