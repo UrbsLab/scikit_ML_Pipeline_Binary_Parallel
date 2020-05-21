@@ -19,7 +19,7 @@ def job(experiment_path):
     algorithms = []
     name_to_abbrev = {'logistic_regression': 'LR', 'decision_tree': 'DT', 'random_forest': 'RF', 'naive_bayes': 'NB',
                       'XGB': 'XGB', 'LGB': 'LGB', 'ANN': 'ANN', 'SVM': 'SVM', 'ExSTraCS': 'ExSTraCS', 'eLCS': 'eLCS',
-                      'XCS': 'XCS'}
+                      'XCS': 'XCS','gradient_boosting':'GB','k_neighbors':'KN'}
     abbrev_to_name = dict([(value, key) for key, value in name_to_abbrev.items()])
     for filepath in glob.glob(dataset_directory_paths[0] + '/training/pickledModels/*'):
         algo_name = abbrev_to_name[filepath.split('/')[-1].split('_')[0]]
@@ -54,8 +54,10 @@ def job(experiment_path):
                 tempArray.append(td[metric])
                 aveList.append(td[metric].mean())
                 sdList.append(td[metric].std())
-
-            result = stats.kruskal(*tempArray)
+            try:
+                result = stats.kruskal(*tempArray)
+            except:
+                result = [tempArray[0][0],1]
             kruskal_summary.at[metric, 'statistic'] = str(round(result[0], 6))
             kruskal_summary.at[metric, 'pvalue'] = str(round(result[1], 6))
 

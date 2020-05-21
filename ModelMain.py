@@ -14,7 +14,7 @@ python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-nam
 
 def main(argv):
     #Parse arguments
-    default_arg = 'True'
+    default_arg = 'f'
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--output-path', dest='output_path', type=str, help='path to output directory')
     parser.add_argument('--experiment-name', dest='experiment_name', type=str, help='name of experiment (no spaces)')
@@ -29,6 +29,8 @@ def main(argv):
     parser.add_argument('--do-ExSTraCS', dest='do_ExSTraCS', type=str, default=default_arg)
     parser.add_argument('--do-eLCS', dest='do_eLCS', type=str, default=default_arg)
     parser.add_argument('--do-XCS', dest='do_XCS', type=str, default=default_arg)
+    parser.add_argument('--do-KN', dest='do_KN', type=str, default=default_arg)
+    parser.add_argument('--do-GB', dest='do_GB', type=str, default=default_arg)
     parser.add_argument('--n-trials', dest='n_trials', type=int,help='# of bayesian hyperparameter optimization trials', default=100)
     parser.add_argument('--timeout', dest='timeout', type=int,help='seconds until hp sweep stops', default=300)
     parser.add_argument('--lcs-timeout', dest='lcs_timeout', type=int, help='seconds until hp sweep stops for LCS algorithms', default=300)
@@ -61,6 +63,10 @@ def main(argv):
         algorithms.append('eLCS')
     if options.do_XCS == 'True':
         algorithms.append('XCS')
+    if options.do_GB == 'True':
+        algorithms.append('gradient_boosting')
+    if options.do_KN == 'True':
+        algorithms.append('k_neighbors')
 
     n_trials = options.n_trials
     timeout = options.timeout
@@ -114,6 +120,8 @@ def main(argv):
             writer.writerow(["ExSTraCS", options.do_ExSTraCS])
             writer.writerow(["eLCS", options.do_eLCS])
             writer.writerow(["XCS", options.do_XCS])
+            writer.writerow(["GB", options.do_GB])
+            writer.writerow(["KN", options.do_KN])
         file.close()
 
 def submitLocalJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,plot_hyperparam_sweep,instance_label,class_label,random_state,cvCount):

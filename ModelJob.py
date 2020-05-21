@@ -20,6 +20,8 @@ from sklearn.naive_bayes import GaussianNB
 from skeLCS import eLCS
 from skXCS import XCS
 from skExSTraCS import ExSTraCS
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
 
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import balanced_accuracy_score
@@ -57,7 +59,7 @@ def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_
     testY = test[class_label].values
 
     #Run model
-    abbrev = {'logistic_regression':'LR','decision_tree':'DT','random_forest':'RF','naive_bayes':'NB','XGB':'XGB','LGB':'LGB','ANN':'ANN','SVM':'SVM','ExSTraCS':'ExSTraCS','eLCS':'eLCS','XCS':'XCS'}
+    abbrev = {'logistic_regression':'LR','decision_tree':'DT','random_forest':'RF','naive_bayes':'NB','XGB':'XGB','LGB':'LGB','ANN':'ANN','SVM':'SVM','ExSTraCS':'ExSTraCS','eLCS':'eLCS','XCS':'XCS','gradient_boosting':'GB','k_neighbors':'KN'}
     if algorithm == 'logistic_regression':
         ret = run_LR_full(trainX,trainY,testX,testY, random_state, cvCount,param_grid,n_trials,timeout,plot_hyperparam_sweep,full_path)
     elif algorithm == 'decision_tree':
@@ -80,6 +82,10 @@ def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_
         ret = run_XCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,plot_hyperparam_sweep, full_path)
     elif algorithm == 'ExSTraCS':
         ret = run_ExSTraCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,plot_hyperparam_sweep, full_path)
+    elif algorithm == 'gradient_boosting':
+        ret = run_GB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+    elif algorithm == 'k_neighbors':
+        ret = run_KN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
     pickle.dump(ret, open(full_path + '/training/' + abbrev[algorithm] + '_CV_' + str(cvCount) + "_metrics", 'wb'))
 
     # Save Runtime
@@ -501,6 +507,119 @@ def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+def objective_GB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
+    params = {'loss': trial.suggest_categorical('loss', param_grid['loss']),
+              'learning_rate': trial.suggest_loguniform('learning_rate', param_grid['learning_rate'][0],param_grid['learning_rate'][1]),
+              'min_samples_leaf': trial.suggest_int('min_samples_leaf', param_grid['min_samples_leaf'][0],param_grid['min_samples_leaf'][1]),
+              'max_depth': trial.suggest_int('max_depth', param_grid['max_depth'][0], param_grid['max_depth'][1]),
+              'max_leaf_nodes': param_grid['max_leaf_nodes'][0],
+              'tol': param_grid['tol'][0],
+              'n_iter_no_change': trial.suggest_int('n_iter_no_change', param_grid['n_iter_no_change'][0],param_grid['n_iter_no_change'][1]),
+              'validation_fraction': trial.suggest_discrete_uniform('validation_fraction',param_grid['validation_fraction'][0],param_grid['validation_fraction'][1],param_grid['validation_fraction'][2])}
+    return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
+
+def run_GB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
+    # Run Hyperparameter sweep
+    est = GradientBoostingClassifier()
+    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+    study = optuna.create_study(direction='maximize', sampler=sampler)
+    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+    study.optimize(lambda trial: objective_GB(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
+
+    if do_plot == 'True':
+        fig = optuna.visualization.plot_parallel_coordinate(study)
+        fig.write_image(full_path+'/training/GB_ParamOptimization_'+str(i)+'.png')
+
+    best_trial = study.best_trial
+
+    # Train model using 'best' hyperparameters
+    est = GradientBoostingClassifier()
+    clf = clone(est).set_params(**best_trial.params)
+    setattr(clf, 'random_state', randSeed)
+
+    model = clf.fit(x_train, y_train)
+
+    # Save model
+    pickle.dump(model, open(full_path+'/training/pickledModels/GB_'+str(i), 'wb'))
+
+    # Prediction evaluation
+    y_pred = clf.predict(x_test)
+
+    metricList = classEval(y_test, y_pred)
+
+    # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
+    probas_ = model.predict_proba(x_test)
+
+    # Compute ROC curve and area the curve
+    fpr, tpr, thresholds = metrics.roc_curve(y_test, probas_[:, 1])
+    roc_auc = auc(fpr, tpr)
+
+    # Compute Precision/Recall curve and AUC
+    prec, recall, thresholds = metrics.precision_recall_curve(y_test, probas_[:, 1])
+    prec, recall, thresholds = prec[::-1], recall[::-1], thresholds[::-1]
+    prec_rec_auc = auc(recall, prec)
+    ave_prec = metrics.average_precision_score(y_test, probas_[:, 1])
+
+    # Feature Importance Estimates
+    fi = clf.feature_importances_
+
+    return metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi
+
+def objective_KN(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
+    params = {
+        'n_neighbors': trial.suggest_int('n_neighbors', param_grid['n_neighbors'][0], param_grid['n_neighbors'][1]),
+        'weights': trial.suggest_categorical('weights', param_grid['weights']),
+        'p': trial.suggest_int('p', param_grid['p'][0], param_grid['p'][1]),
+        'metric': trial.suggest_categorical('metric', param_grid['metric'])}
+    return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
+
+def run_KN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
+    # Run Hyperparameter sweep
+    est = KNeighborsClassifier()
+    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+    study = optuna.create_study(direction='maximize', sampler=sampler)
+    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+    study.optimize(lambda trial: objective_KN(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
+
+    if do_plot == 'True':
+        fig = optuna.visualization.plot_parallel_coordinate(study)
+        fig.write_image(full_path+'/training/KN_ParamOptimization_'+str(i)+'.png')
+
+    best_trial = study.best_trial
+
+    # Train model using 'best' hyperparameters
+    est = KNeighborsClassifier()
+    clf = clone(est).set_params(**best_trial.params)
+
+    model = clf.fit(x_train, y_train)
+
+    # Save model
+    pickle.dump(model, open(full_path+'/training/pickledModels/KN_'+str(i), 'wb'))
+
+    # Prediction evaluation
+    y_pred = clf.predict(x_test)
+
+    metricList = classEval(y_test, y_pred)
+
+    # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
+    probas_ = model.predict_proba(x_test)
+
+    # Compute ROC curve and area the curve
+    fpr, tpr, thresholds = metrics.roc_curve(y_test, probas_[:, 1])
+    roc_auc = auc(fpr, tpr)
+
+    # Compute Precision/Recall curve and AUC
+    prec, recall, thresholds = metrics.precision_recall_curve(y_test, probas_[:, 1])
+    prec, recall, thresholds = prec[::-1], recall[::-1], thresholds[::-1]
+    prec_rec_auc = auc(recall, prec)
+    ave_prec = metrics.average_precision_score(y_test, probas_[:, 1])
+
+    # Feature Importance Estimates
+    fi = computeImportances(clf, x_train, y_train, x_test, y_test, metricList[0])
+
+    return metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi
+
+
 def objective_ANN(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'activation': trial.suggest_categorical('activation', param_grid['activation']),
               'learning_rate': trial.suggest_categorical('learning_rate', param_grid['learning_rate']),
@@ -877,6 +996,15 @@ def hyperparameters():
     # param_grid_XCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
     param_grid_XCS = {'learning_iterations': [5000,10000],'N': [1000],'nu': [1,10]}
 
+    # GB
+    param_grid_GB = {'loss': ['deviance', 'exponential'], 'learning_rate': [1e-2, 1], 'min_samples_leaf': [1, 200],
+                     'max_depth': [1, 10], 'max_leaf_nodes': [None], 'tol': [1e-7], 'n_iter_no_change': [1, 20],
+                     'validation_fraction': [0.01, 0.31, 0.01]}
+
+    # KN
+    param_grid_KN = {'n_neighbors': [1, 100], 'weights': ['uniform', 'distance'], 'p': [1, 5],
+                     'metric': ['euclidean', 'minkowski']}
+
     ####################################################################################################################
     param_grid['logistic_regression'] = param_grid_LR
     param_grid['decision_tree'] = param_grid_DT
@@ -889,6 +1017,8 @@ def hyperparameters():
     param_grid['eLCS'] = param_grid_eLCS
     param_grid['XCS'] = param_grid_XCS
     param_grid['naive_bayes'] = {}
+    param_grid['gradient_boosting'] = param_grid_GB
+    param_grid['k_neighbors'] = param_grid_KN
     return param_grid
 
 if __name__ == '__main__':

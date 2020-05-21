@@ -39,6 +39,8 @@ def printIncompleteJobs(argv):
     parser.add_argument('--do-ExSTraCS', dest='do_ExSTraCS', type=str, default=default_arg)
     parser.add_argument('--do-eLCS', dest='do_eLCS', type=str, default=default_arg)
     parser.add_argument('--do-XCS', dest='do_XCS', type=str, default=default_arg)
+    parser.add_argument('--do-KN', dest='do_KN', type=str, default=default_arg)
+    parser.add_argument('--do-GB', dest='do_GB', type=str, default=default_arg)
 
     options = parser.parse_args(argv[2:])
     output_path = options.output_path
@@ -70,8 +72,12 @@ def printIncompleteJobs(argv):
         algorithms.append('eLCS')
     if options.do_XCS == 'True':
         algorithms.append('XCS')
+    if options.do_GB == 'True':
+        algorithms.append('gradient_boosting')
+    if options.do_KN == 'True':
+        algorithms.append('k_neighbors')
 
-    abbrev = {'logistic_regression':'LR','decision_tree':'DT','random_forest':'RF','naive_bayes':'NB','XGB':'XGB','LGB':'LGB','ANN':'ANN','SVM':'SVM','ExSTraCS':'ExSTraCS','eLCS':'eLCS','XCS':'XCS'}
+    abbrev = {'logistic_regression':'LR','decision_tree':'DT','random_forest':'RF','naive_bayes':'NB','XGB':'XGB','LGB':'LGB','ANN':'ANN','SVM':'SVM','ExSTraCS':'ExSTraCS','eLCS':'eLCS','XCS':'XCS','gradient_boosting':'GB','k_neighbors':'KN'}
 
     # Argument checks
     if not os.path.exists(output_path):
@@ -341,7 +347,7 @@ def runPhase4Job(argv):
     instance_label = metadata[1, 1]
     random_state = int(metadata[2, 1])
 
-    if not algorithm in ['logistic_regression','decision_tree','random_forest','naive_bayes','XGB','ANN','SVM','eLCS','XCS','ExSTraCS']:
+    if not algorithm in ['logistic_regression','decision_tree','random_forest','naive_bayes','XGB','ANN','SVM','eLCS','XCS','ExSTraCS','gradient_boosting','k_neighbors']:
         raise Exception('Invalid algorithm')
     full_path = output_path + "/" + experiment_name + "/" + dataset_name
     train_file_path = full_path + '/CVDatasets/' + dataset_name + "_CV_" + str(cv) + "_Train.csv"
@@ -386,6 +392,8 @@ def runPhase5Job(argv):
     do_ExSTraCS = metadata[13, 1]
     do_eLCS = metadata[14, 1]
     do_XCS = metadata[15, 1]
+    do_GB = metadata[16, 1]
+    do_KN = metadata[17, 1]
 
     encodedAlgos = ''
     encodedAlgos = StatsMain.encode(do_LR, encodedAlgos)
@@ -399,6 +407,8 @@ def runPhase5Job(argv):
     encodedAlgos = StatsMain.encode(do_ExSTraCS, encodedAlgos)
     encodedAlgos = StatsMain.encode(do_eLCS, encodedAlgos)
     encodedAlgos = StatsMain.encode(do_XCS, encodedAlgos)
+    encodedAlgos = encode(do_GB, encodedAlgos)
+    encodedAlgos = encode(do_KN, encodedAlgos)
 
     full_path = output_path + "/" + experiment_name + "/" + dataset_name
 

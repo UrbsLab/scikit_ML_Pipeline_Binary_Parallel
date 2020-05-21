@@ -23,7 +23,7 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
 
     #Decode algos
     algorithms = []
-    possible_algos = ['logistic_regression','decision_tree','random_forest','naive_bayes','XGB','LGB','ANN','SVM','ExSTraCS','eLCS','XCS']
+    possible_algos = ['logistic_regression','decision_tree','random_forest','naive_bayes','XGB','LGB','ANN','SVM','ExSTraCS','eLCS','XCS','gradient_boosting','k_neighbors']
     algorithms = decode(algorithms, encoded_algos, possible_algos, 0)
     algorithms = decode(algorithms, encoded_algos, possible_algos, 1)
     algorithms = decode(algorithms, encoded_algos, possible_algos, 2)
@@ -35,8 +35,10 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
     algorithms = decode(algorithms, encoded_algos, possible_algos, 8)
     algorithms = decode(algorithms, encoded_algos, possible_algos, 9)
     algorithms = decode(algorithms, encoded_algos, possible_algos, 10)
-    abbrev = {'logistic_regression':'LR','decision_tree':'DT','random_forest':'RF','naive_bayes':'NB','XGB':'XGB','LGB':'LGB','ANN':'ANN','SVM':'SVM','ExSTraCS':'ExSTraCS','eLCS':'eLCS','XCS':'XCS'}
-    colors = {'logistic_regression':'black','decision_tree':'yellow','random_forest':'orange','naive_bayes':'grey','XGB':'purple','LGB':'aqua','ANN':'red','SVM':'blue','ExSTraCS':'lightcoral','eLCS':'firebrick','XCS':'deepskyblue'}
+    algorithms = decode(algorithms, encoded_algos, possible_algos, 11)
+    algorithms = decode(algorithms, encoded_algos, possible_algos, 12)
+    abbrev = {'logistic_regression':'LR','decision_tree':'DT','random_forest':'RF','naive_bayes':'NB','XGB':'XGB','LGB':'LGB','ANN':'ANN','SVM':'SVM','ExSTraCS':'ExSTraCS','eLCS':'eLCS','XCS':'XCS','gradient_boosting':'GB','k_neighbors':'KN'}
+    colors = {'logistic_regression':'black','decision_tree':'yellow','random_forest':'orange','naive_bayes':'grey','XGB':'purple','LGB':'aqua','ANN':'red','SVM':'blue','ExSTraCS':'lightcoral','eLCS':'firebrick','XCS':'deepskyblue','gradient_boosting':'bisque','k_neighbors':'seagreen'}
     #Get Original Headers
     original_headers = pd.read_csv(full_path+"/preprocessing/OriginalHeaders.csv",sep=',').columns.values.tolist()
 
@@ -287,7 +289,10 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
             tempArray = []
             for algorithm in algorithms:
                 tempArray.append(metric_dict[algorithm][metric])
-            result = stats.kruskal(*tempArray)
+            try:
+                result = stats.kruskal(*tempArray)
+            except:
+                result = [tempArray[0],1]
             kruskal_summary.at[metric, 'statistic'] = str(round(result[0], 6))
             kruskal_summary.at[metric, 'pvalue'] = str(round(result[1], 6))
             if result[1] < sig_cutoff:

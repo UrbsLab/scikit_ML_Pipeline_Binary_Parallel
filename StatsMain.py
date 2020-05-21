@@ -49,6 +49,8 @@ def main(argv):
     do_ExSTraCS = metadata[13,1]
     do_eLCS = metadata[14,1]
     do_XCS = metadata[15,1]
+    do_GB = metadata[16, 1]
+    do_KN = metadata[17, 1]
 
     encodedAlgos = ''
     encodedAlgos = encode(do_LR,encodedAlgos)
@@ -62,6 +64,8 @@ def main(argv):
     encodedAlgos = encode(do_ExSTraCS, encodedAlgos)
     encodedAlgos = encode(do_eLCS, encodedAlgos)
     encodedAlgos = encode(do_XCS, encodedAlgos)
+    encodedAlgos = encode(do_GB, encodedAlgos)
+    encodedAlgos = encode(do_KN, encodedAlgos)
 
     # Iterate through datasets
     dataset_paths = os.listdir(output_path + "/" + experiment_name)
