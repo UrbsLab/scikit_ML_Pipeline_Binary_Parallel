@@ -80,8 +80,8 @@ def main(argv):
 
     #Iterate through datasets
     for datasetFilename in glob.glob(data_path+'/*.csv'):
-        submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
-        #submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,random_state)
+        #submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
+        submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
 
     # Save metadata to file
     with open(output_path+'/'+experiment_name+'/'+'metadata.csv',mode='w') as file:
@@ -100,7 +100,9 @@ def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method
     job_name = experiment_path+'/jobs/'+job_ref+'_run.sh'
     sh_file = open(job_name,'w')
     sh_file.write('#!/bin/bash\n')
+    sh_file.write('#BSUB -q doi_normal'+'\n')
     sh_file.write('#BSUB -J '+job_ref+'\n')
+    sh_file.write('bsub -M 4GB'+'\n')
     sh_file.write('#BSUB -o ' + experiment_path+'/logs/'+job_ref+'.o\n')
     sh_file.write('#BSUB -e ' + experiment_path+'/logs/'+job_ref+'.e\n')
 
