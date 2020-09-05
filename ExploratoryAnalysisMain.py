@@ -8,7 +8,7 @@ import time
 import csv
 
 '''Sample Run Command:
-python DataPreprocessingMain.py --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1
+python ExploratoryAalysisMain.py --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1
 '''
 
 def main(argv):
@@ -19,17 +19,15 @@ def main(argv):
     parser.add_argument('--output-path',dest='output_path',type=str,help='path to output directory')
     parser.add_argument('--experiment-name', dest='experiment_name',type=str, help='name of experiment output folder (no spaces)')
     #Defaults available (but critical to check)
-    parser.add_argument('--data-name',dest='data_name',type=str,help='name of datafile (with file extension, e.g. myfile.csv); if specified will run single dataset in data-path folder instead of all datasets', default=".txt")
+    parser.add_argument('--data-ext',dest='data_ext',type=str,help='name of datafile extension; only .txt and .csv permitted', default=".txt")
     parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="False")
     parser.add_argument('--class-label', dest='class_label', type=str, help='outcome label of all datasets', default="Class")
     parser.add_argument('--instance-label', dest='instance_label', type=str, default="")
     #Defaults available (but less critical to check)
     parser.add_argument('--cv',dest='cv_partitions',type=int,help='number of CV partitions',default=3)
     parser.add_argument('--partition-method',dest='partition_method',type=str,help='S or R or M for stratified, random, or matched, respectively',default="S")
-    parser.add_argument('--scale-data',dest='scale_data',type=str,help='perform data scaling?',default="True")
-    parser.add_argument('--impute-data', dest='impute_data',type=str,help='perform missing value data imputation? (required for most ML algorithms if missing data is present)',default="True")
-    parser.add_argument('--categorical-cutoff', dest='categorical_cutoff', type=int,help='number of unique values after which a variable is considered to be quantitative vs categorical', default=10)
     parser.add_argument('--match-label', dest='match_label', type=str, help='only applies when M selected for partition-method; indicates column with matched instance ids', default="")
+    parser.add_argument('--categorical-cutoff', dest='categorical_cutoff', type=int,help='number of unique values after which a variable is considered to be quantitative vs categorical', default=10)
     parser.add_argument('--export-ea', dest='export_exploratory_analysis', type=str, help='run and export basic exploratory analysis files, i.e. unique value counts, missingness counts, class balance barplot',default="True")
     parser.add_argument('--export-fc', dest='export_feature_correlations', type=str, help='run and export feature correlation analysis (yields correlation heatmap)',default="True")
     parser.add_argument('--export-up', dest='export_univariate_plots', type=str, help='export univariate analysis plots (note: univariate analysis still output by default)',default="True")
@@ -40,7 +38,7 @@ def main(argv):
     output_path = options.output_path
     experiment_name = options.experiment_name
 
-    data_name = options.data_name
+    data_ext = options.data_ext
     run_parallel = options.run_parallel
     class_label = options.class_label
     if options.instance_label == '':
@@ -50,13 +48,11 @@ def main(argv):
 
     cv_partitions = options.cv_partitions
     partition_method = options.partition_method
-    scale_data = options.scale_data
-    impute_data = options.impute_data
-    categorical_cutoff = options.categorical_cutoff
     if options.match_label == '':
         match_label = 'None'
     else:
         match_label = options.match_label
+    categorical_cutoff = options.categorical_cutoff
     export_exploratory_analysis = options.export_exploratory_analysis
     export_feature_correlations = options.export_feature_correlations
     export_univariate_plots = options.export_univariate_plots
@@ -83,21 +79,26 @@ def main(argv):
     os.mkdir(output_path+'/'+experiment_name+'/logs')
     os.mkdir(output_path+'/'+ experiment_name+'/jobsCompleted')
 
-    #Check file extension
-    if
+    #Run all datasets in target folder with specified file extension
+    if data_ext == 'txt':
+        if len(glob.glob(data_path+'/*.txt')) == 0: #Check that there is at least 1 dataset
+            raise Exception("There must be at least one txt dataset in data_path directory")
+        for datasetFilename in glob.glob(data_path+'/*.txt'): #Iterate through datasets
+            if run_parallel:
+                submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
+            else:
+                submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
 
-    data_name
-
-    #have to figure out how to parallize both datasets and CVs
-
-    #Check that there is at least 1 dataset
-    if len(glob.glob(data_path+'/*.csv')) == 0:
-        raise Exception("There must be at least one csv dataset in data_path directory")
-
-    #Iterate through datasets
-    for datasetFilename in glob.glob(data_path+'/*.csv'):
-        #submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
-        submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
+    elif data_ext == 'csv':
+        if len(glob.glob(data_path+'/*.csv')) == 0: #Check that there is at least 1 dataset
+            raise Exception("There must be at least one csv dataset in data_path directory")
+        for datasetFilename in glob.glob(data_path+'/*.csv'): #Iterate through datasets
+            if run_parallel:
+                submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
+            else:
+                submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
+    else:
+        raise Exception("File extension not recognized (only .txt or .csv permitted)")
 
     # Save metadata to file
     with open(output_path+'/'+experiment_name+'/'+'metadata.csv',mode='w') as file:
@@ -108,10 +109,10 @@ def main(argv):
         writer.writerow(["random state",random_state])
     file.close()
 
-def submitLocalJob(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state):
-    DataPreprocessingJob.job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
+def submitLocalJob(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state):
+    DataPreprocessingJob.job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
 
-def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state):
+def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state):
     job_ref = str(time.time())
     job_name = experiment_path+'/jobs/'+job_ref+'_run.sh'
     sh_file = open(job_name,'w')
@@ -125,8 +126,8 @@ def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method
 
     this_file_path = os.path.dirname(os.path.realpath(__file__))
     sh_file.write('python '+this_file_path+'/DataPreprocessingJob.py '+dataset_path+" "+experiment_path+" "+str(cv_partitions)+
-                  " "+partition_method+" "+scale_data+" "+impute_data+" "+str(categorical_cutoff)+" "+export_initial_analysis+
-                  " "+export_feature_correlations+" "+export_univariate+" "+class_label+" "+instance_label+" "+match_label+
+                  " "+partition_method+" "+str(categorical_cutoff)+" "+export_exploratory_analysis+
+                  " "+export_feature_correlations+" "+export_univariate_plots+" "+class_label+" "+instance_label+" "+match_label+
                   " "+str(random_state)+'\n')
     sh_file.close()
     os.system('bsub < '+job_name)

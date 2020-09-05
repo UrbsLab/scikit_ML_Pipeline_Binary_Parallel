@@ -12,7 +12,7 @@ from sklearn.impute import IterativeImputer
 import csv
 import time
 
-def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,impute_data,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state):
+def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state):
 
     ##EDITABLE CODE#####################################################################################################
     attribute_headers_to_ignore = []
@@ -24,13 +24,18 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
     np.random.seed(random_state)
 
     dataset_name = dataset_path.split('/')[-1].split('.')[0]
+    dataset_ext = dataset_path.split('/')[-1].split('.')[-1]
     if not os.path.exists(experiment_path + '/' + dataset_name):
         os.mkdir(experiment_path + '/' + dataset_name)
     if not os.path.exists(experiment_path + '/' + dataset_name + '/preprocessing'):
         os.mkdir(experiment_path + '/' + dataset_name + '/preprocessing')
-    data = pd.read_csv(dataset_path,na_values='NA',sep=',')
 
-    if export_initial_analysis == "True":
+    if dataset_ext == 'csv':
+        data = pd.read_csv(dataset_path,na_values='NA',sep=',')
+    else: # txt file
+        data = pd.read_csv(dataset_path,na_values='NA',sep='\t')
+
+    if export_exploratory_analysis == "True":
         #data.describe().to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DescribeDataset.csv')
         #data.dtypes.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DtypesDataset.csv')
         data.nunique().to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'NumUniqueDataset.csv')
@@ -47,7 +52,7 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
     #Remove columns to be ignored in analysis
     data = data.drop(attribute_headers_to_ignore,axis=1)
 
-    if export_initial_analysis == "True":
+    if export_exploratory_analysis == "True":
         #Export Class Count Bar Graph
         data[class_label].value_counts().plot(kind='bar')
         plt.ylabel('Count')
@@ -75,19 +80,20 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
         sns.heatmap(corrmat,vmax=1,square=True)
         plt.savefig(experiment_path + '/' + dataset_name + '/preprocessing/'+'FeatureCorrelations.png')
         plt.close('all')
-    #Univariate
-    if export_univariate:
-        if not os.path.exists(experiment_path + '/' + dataset_name + '/preprocessing/univariate'):
-            os.mkdir(experiment_path + '/' + dataset_name + '/preprocessing/univariate')
-        p_value_dict = {}
-        for column in data:
-            if column != class_label and column != instance_label:
-                p_value_dict[column] = test_selector(column,class_label,data,categorical_variables)
 
-        #Save p-values to file
-        pval_df = pd.DataFrame.from_dict(p_value_dict, orient='index')
-        pval_df.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/univariate/Significance.csv',index=True)
+    #Univariate Analysis
+    if not os.path.exists(experiment_path + '/' + dataset_name + '/preprocessing/univariate'):
+        os.mkdir(experiment_path + '/' + dataset_name + '/preprocessing/univariate')
+    p_value_dict = {}
+    for column in data:
+        if column != class_label and column != instance_label:
+            p_value_dict[column] = test_selector(column,class_label,data,categorical_variables)
 
+    #Save p-values to file
+    pval_df = pd.DataFrame.from_dict(p_value_dict, orient='index')
+    pval_df.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/univariate/Significance.csv',index=True)
+
+    if export_univariate_plots:
         sorted_p_list = sorted(p_value_dict.items(),key = lambda item:item[1])
         sig_cutoff = 0.05
         for i in sorted_p_list:
@@ -111,14 +117,6 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,scale_data,i
 
     if partition_method == 'M':
         headers.remove(match_label)
-
-    #Scale Data
-    if scale_data:
-        train_dfs,test_dfs = dataScaling(train_dfs,test_dfs,class_label,instance_label,headers)
-
-    #Impute Missing Values
-    if impute_data and isMissingData:
-        train_dfs,test_dfs = imputeCVData(class_label,instance_label,categorical_variables,headers,train_dfs,test_dfs,random_state)
 
     #Save CV'd data as .csv files
     if not os.path.exists(experiment_path + '/' + dataset_name + '/CVDatasets'):
@@ -203,6 +201,7 @@ def graph_selector(featureName, outcomeLabel, td, categorical_variables,experime
         new_feature_name = new_feature_name.replace("/","")  # Deal with the dataset specific characters causing problems in this dataset.
         plt.savefig(experiment_path + '/' + dataset_name + '/preprocessing/univariate/'+'Boxplot_'+str(new_feature_name)+".png",bbox_inches="tight", format='png')
         plt.close('all')
+        
 ###################################
 def cv_partitioner(td, cv_partitions, partition_method, outcomeLabel, categoricalOutcome, matchName, randomSeed):
     """ Takes data frame (td), number of cv partitions, partition method
@@ -317,130 +316,6 @@ def cv_partitioner(td, cv_partitions, partition_method, outcomeLabel, categorica
         test_dfs.append(pd.DataFrame(testList, columns=header))
 
     return train_dfs, test_dfs
-###################################
-def dataScaling(train_dfs, test_dfs, outcomeLabel, instLabel, header):
-    scale_train_dfs = []
-    scale_test_dfs = []
-    # Scale all training datasets
-    i = 0
-    for each in train_dfs:
-        df = each
-        if instLabel == None or instLabel == 'None':
-            x_train = df.drop([outcomeLabel], axis=1)
-        else:
-            x_train = df.drop([outcomeLabel, instLabel], axis=1)
-            inst_train = df[instLabel]  # pull out instance labels in case they include text
-        y_train = df[outcomeLabel]
-
-        # Scale features (x)
-        scaler = StandardScaler()
-        scaler.fit(x_train)
-        x_train_scaled = pd.DataFrame(scaler.transform(x_train), columns=x_train.columns)
-
-        # Recombine x and y
-        if instLabel == None or instLabel == 'None':
-            scale_train_dfs.append(
-                pd.concat([pd.DataFrame(y_train, columns=[outcomeLabel]), pd.DataFrame(x_train_scaled, columns=header)],
-                          axis=1, sort=False))
-        else:
-            scale_train_dfs.append(pd.concat(
-                [pd.DataFrame(y_train, columns=[outcomeLabel]), pd.DataFrame(inst_train, columns=[instLabel]),
-                 pd.DataFrame(x_train_scaled, columns=header)], axis=1, sort=False))
-
-        # Scale corresponding testing dataset
-        df = test_dfs[i]
-        if instLabel == None or instLabel == 'None':
-            x_test = df.drop([outcomeLabel], axis=1)
-        else:
-            x_test = df.drop([outcomeLabel, instLabel], axis=1)
-            inst_test = df[instLabel]  # pull out instance labels in case they include text
-        y_test = df[outcomeLabel]
-
-        # Scale features (x)
-        x_test_scaled = pd.DataFrame(scaler.transform(x_test), columns=x_test.columns)
-
-        # Recombine x and y
-        if instLabel == None or instLabel == 'None':
-            scale_test_dfs.append(
-                pd.concat([pd.DataFrame(y_test, columns=[outcomeLabel]), pd.DataFrame(x_test_scaled, columns=header)],
-                          axis=1, sort=False))
-        else:
-            scale_test_dfs.append(pd.concat(
-                [pd.DataFrame(y_test, columns=[outcomeLabel]), pd.DataFrame(inst_test, columns=[instLabel]),
-                 pd.DataFrame(x_test_scaled, columns=header)], axis=1, sort=False))
-
-        i += 1
-
-    return scale_train_dfs, scale_test_dfs
-
-###################################
-def imputeCVData(outcomeLabel, instLabel, categorical_variables, header, train_dfs, test_dfs, randomSeed):
-    # Begin by imputing categorical variables with simple 'mode' imputation
-    imp_train_dfs = []
-    imp_test_dfs = []
-
-    # Impute all training datasets
-    for each in train_dfs:
-        for c in each.columns:
-            if c in categorical_variables:
-                each[c].fillna(each[c].mode().iloc[0], inplace=True)
-
-    # Impute all testing datasets
-    for each in test_dfs:
-        for c in each.columns:
-            if c in categorical_variables:
-                each[c].fillna(each[c].mode().iloc[0], inplace=True)
-
-    # Now impute remaining ordinal variables
-
-    # Impute all training datasets
-    for each in train_dfs:
-        df = each
-        if instLabel == None or instLabel == 'None':
-            x_train = df.drop([outcomeLabel], axis=1).values
-        else:
-            x_train = df.drop([outcomeLabel, instLabel], axis=1).values
-            inst_train = df[instLabel].values  # pull out instance labels in case they include text
-        y_train = df[outcomeLabel].values
-
-        # Impute features (x)
-        x_new_train = IterativeImputer(random_state=randomSeed,max_iter=30).fit_transform(x_train)
-
-        # Recombine x and y
-        if instLabel == None or instLabel == 'None':
-            imp_train_dfs.append(
-                pd.concat([pd.DataFrame(y_train, columns=[outcomeLabel]), pd.DataFrame(x_new_train, columns=header)],
-                          axis=1, sort=False))
-        else:
-            imp_train_dfs.append(pd.concat(
-                [pd.DataFrame(y_train, columns=[outcomeLabel]), pd.DataFrame(inst_train, columns=[instLabel]),
-                 pd.DataFrame(x_new_train, columns=header)], axis=1, sort=False))
-
-    # Impute all testing datasets
-    for each in test_dfs:
-        df = each
-        if instLabel == None or instLabel == 'None':
-            x_test = df.drop([outcomeLabel], axis=1).values
-        else:
-            x_test = df.drop([outcomeLabel, instLabel], axis=1).values
-            inst_test = df[instLabel].values  # pull out instance labels in case they include text
-
-        y_test = df[outcomeLabel].values
-
-        # Impute features (x)
-        x_new_test = IterativeImputer(random_state=randomSeed,max_iter=30).fit_transform(x_test)
-
-        # Recombine x and y
-        if instLabel == None or instLabel == 'None':
-            imp_test_dfs.append(
-                pd.concat([pd.DataFrame(y_test, columns=[outcomeLabel]), pd.DataFrame(x_new_test, columns=header)],
-                          axis=1, sort=False))
-        else:
-            imp_test_dfs.append(pd.concat(
-                [pd.DataFrame(y_test, columns=[outcomeLabel]), pd.DataFrame(inst_test, columns=[instLabel]),
-                 pd.DataFrame(x_new_test, columns=header)], axis=1, sort=False))
-
-    return imp_train_dfs, imp_test_dfs
 
 ###################################
 def identifyCategoricalFeatures(x_data,categorical_cutoff):
@@ -453,4 +328,4 @@ def identifyCategoricalFeatures(x_data,categorical_cutoff):
     return categorical_variables
 
 if __name__ == '__main__':
-    job(sys.argv[1],sys.argv[2],int(sys.argv[3]),sys.argv[4],sys.argv[5],sys.argv[6],int(sys.argv[7]),sys.argv[8],sys.argv[9],sys.argv[10],sys.argv[11],sys.argv[12],sys.argv[13],int(sys.argv[14]))
+    job(sys.argv[1],sys.argv[2],int(sys.argv[3]),sys.argv[4],int(sys.argv[5]),sys.argv[6],sys.argv[7],sys.argv[8],sys.argv[9],sys.argv[10],sys.argv[11],int(sys.argv[12]))
