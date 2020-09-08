@@ -27,8 +27,8 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_
     dataset_ext = dataset_path.split('/')[-1].split('.')[-1]
     if not os.path.exists(experiment_path + '/' + dataset_name):
         os.mkdir(experiment_path + '/' + dataset_name)
-    if not os.path.exists(experiment_path + '/' + dataset_name + '/preprocessing'):
-        os.mkdir(experiment_path + '/' + dataset_name + '/preprocessing')
+    if not os.path.exists(experiment_path + '/' + dataset_name + '/exploratory'):
+        os.mkdir(experiment_path + '/' + dataset_name + '/exploratory')
 
     if dataset_ext == 'csv':
         data = pd.read_csv(dataset_path,na_values='NA',sep=',')
@@ -38,11 +38,11 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_
     if export_exploratory_analysis == "True":
         #data.describe().to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DescribeDataset.csv')
         #data.dtypes.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DtypesDataset.csv')
-        data.nunique().to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'NumUniqueDataset.csv')
+        data.nunique().to_csv(experiment_path + '/' + dataset_name + '/exploratory/'+'NumUniqueDataset.csv')
 
         #Assess Missingness in Attributes
         missing_count = data.isnull().sum()
-        missing_count.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'FeatureMissingness.csv')
+        missing_count.to_csv(experiment_path + '/' + dataset_name + '/exploratory/'+'FeatureMissingness.csv')
 
     #Remove instances with missing outcome values
     data = data.dropna(axis=0,how='any',subset=[class_label])
@@ -52,13 +52,27 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_
     #Remove columns to be ignored in analysis
     data = data.drop(attribute_headers_to_ignore,axis=1)
 
+    #Check class counts and automatically flip class encoding if there are more cases (i.e. 1) than controls (i.e. 0). This pipeline assumes that 0 encodes the majority class.
+    class_counts = data[class_label].value_counts()
+    class_swap = False
+    if class_counts.index[0] == 1:
+        #Swap class labels (so 0 is majority class)(0's to 1's and 1's to 0's)
+        data[class_label]=data[class_label].replace(to_replace=0, value=2)
+        data[class_label]=data[class_label].replace(to_replace=1, value=0)
+        data[class_label]=data[class_label].replace(to_replace=2, value=1)
+        class_swap = True
+
     if export_exploratory_analysis == "True":
         #Export Class Count Bar Graph
-        data[class_label].value_counts().plot(kind='bar')
+        class_counts.plot(kind='bar')
         plt.ylabel('Count')
-        plt.title('Class Counts (Checking for Imbalance)')
-        plt.savefig(experiment_path + '/' + dataset_name + '/preprocessing/'+'ClassCounts.png')
+        if class_swap:
+            plt.title('Class Counts (Note: Class encoding swapped!)')
+        else:
+            plt.title('Class Counts')
+        plt.savefig(experiment_path + '/' + dataset_name + '/exploratory/'+'ClassCounts.png')
         plt.close('all')
+
     #Identify categorical variables in dataset
     if len(categorical_attribute_headers) == 0:
         if instance_label == "None":
@@ -69,21 +83,18 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_
     else:
         categorical_variables = categorical_attribute_headers
 
-    #Check if there are any missing values
-    isMissingData = data.isnull().values.any()
-
     #Feature Correlations
     if export_feature_correlations:
         data_cor = data.drop([class_label],axis=1)
         corrmat = data_cor.corr(method='pearson')
         f,ax=plt.subplots(figsize=(40,20))
         sns.heatmap(corrmat,vmax=1,square=True)
-        plt.savefig(experiment_path + '/' + dataset_name + '/preprocessing/'+'FeatureCorrelations.png')
+        plt.savefig(experiment_path + '/' + dataset_name + '/exploratory/'+'FeatureCorrelations.png')
         plt.close('all')
 
     #Univariate Analysis
-    if not os.path.exists(experiment_path + '/' + dataset_name + '/preprocessing/univariate'):
-        os.mkdir(experiment_path + '/' + dataset_name + '/preprocessing/univariate')
+    if not os.path.exists(experiment_path + '/' + dataset_name + '/exploratory/univariate'):
+        os.mkdir(experiment_path + '/' + dataset_name + '/exploratory/univariate')
     p_value_dict = {}
     for column in data:
         if column != class_label and column != instance_label:
@@ -91,7 +102,7 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_
 
     #Save p-values to file
     pval_df = pd.DataFrame.from_dict(p_value_dict, orient='index')
-    pval_df.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/univariate/Significance.csv',index=True)
+    pval_df.to_csv(experiment_path + '/' + dataset_name + '/exploratory/univariate/Significance.csv',index=True)
 
     if export_univariate_plots:
         sorted_p_list = sorted(p_value_dict.items(),key = lambda item:item[1])
@@ -106,17 +117,16 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_
     headers.remove(class_label)
     if instance_label != "None":
         headers.remove(instance_label)
+    if partition_method == 'M':
+        headers.remove(match_label)
 
-    with open(experiment_path + '/' + dataset_name + '/preprocessing/OriginalHeaders.csv',mode='w') as file:
+    with open(experiment_path + '/' + dataset_name + '/exploratory/OriginalHeaders.csv',mode='w') as file:
         writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(headers)
     file.close()
 
     #Cross Validation
     train_dfs,test_dfs = cv_partitioner(data,cv_partitions,partition_method,class_label,True,match_label,random_state)
-
-    if partition_method == 'M':
-        headers.remove(match_label)
 
     #Save CV'd data as .csv files
     if not os.path.exists(experiment_path + '/' + dataset_name + '/CVDatasets'):
@@ -145,16 +155,15 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_
     #Save Runtime
     if not os.path.exists(experiment_path + '/' + dataset_name + '/runtime'):
         os.mkdir(experiment_path + '/' + dataset_name + '/runtime')
-    runtime_file = open(experiment_path + '/' + dataset_name + '/runtime/runtime_Preprocessing.txt','w')
+    runtime_file = open(experiment_path + '/' + dataset_name + '/runtime/runtime_exploratory.txt','w')
     runtime_file.write(str(time.time()-job_start_time))
     runtime_file.close()
 
     #Print completion
     print(dataset_name+" phase 1 complete")
-    job_file = open(experiment_path + '/jobsCompleted/job_preprocessing_'+dataset_name+'.txt', 'w')
+    job_file = open(experiment_path + '/jobsCompleted/job_exploratory_'+dataset_name+'.txt', 'w')
     job_file.write('complete')
     job_file.close()
-
 
 ########Univariate##############
 def test_selector(featureName, outcomeLabel, td, categorical_variables):
@@ -188,7 +197,7 @@ def graph_selector(featureName, outcomeLabel, td, categorical_variables,experime
         new_feature_name = featureName.replace(" ","")       # Deal with the dataset specific characters causing problems in this dataset.
         new_feature_name = new_feature_name.replace("*","")  # Deal with the dataset specific characters causing problems in this dataset.
         new_feature_name = new_feature_name.replace("/","")  # Deal with the dataset specific characters causing problems in this dataset.
-        plt.savefig(experiment_path + '/' + dataset_name + '/preprocessing/univariate/'+'Barplot_'+str(new_feature_name)+".png",bbox_inches="tight", format='png')
+        plt.savefig(experiment_path + '/' + dataset_name + '/exploratory/univariate/'+'Barplot_'+str(new_feature_name)+".png",bbox_inches="tight", format='png')
         plt.close('all')
     # Feature is continuous and Outcome is discrete/categorical/binary
     else:
@@ -199,9 +208,9 @@ def graph_selector(featureName, outcomeLabel, td, categorical_variables,experime
         new_feature_name = featureName.replace(" ","")       # Deal with the dataset specific characters causing problems in this dataset.
         new_feature_name = new_feature_name.replace("*","")  # Deal with the dataset specific characters causing problems in this dataset.
         new_feature_name = new_feature_name.replace("/","")  # Deal with the dataset specific characters causing problems in this dataset.
-        plt.savefig(experiment_path + '/' + dataset_name + '/preprocessing/univariate/'+'Boxplot_'+str(new_feature_name)+".png",bbox_inches="tight", format='png')
+        plt.savefig(experiment_path + '/' + dataset_name + '/exploratory/univariate/'+'Boxplot_'+str(new_feature_name)+".png",bbox_inches="tight", format='png')
         plt.close('all')
-        
+
 ###################################
 def cv_partitioner(td, cv_partitions, partition_method, outcomeLabel, categoricalOutcome, matchName, randomSeed):
     """ Takes data frame (td), number of cv partitions, partition method

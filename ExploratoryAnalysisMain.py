@@ -7,7 +7,8 @@ import DataPreprocessingJob
 import time
 import csv
 
-'''Sample Run Command:
+'''Phase 1 of Machine Learning Analysis Pipeline:
+Sample Run Command:
 python ExploratoryAalysisMain.py --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1
 '''
 
@@ -19,8 +20,8 @@ def main(argv):
     parser.add_argument('--output-path',dest='output_path',type=str,help='path to output directory')
     parser.add_argument('--experiment-name', dest='experiment_name',type=str, help='name of experiment output folder (no spaces)')
     #Defaults available (but critical to check)
-    parser.add_argument('--data-ext',dest='data_ext',type=str,help='name of datafile extension; only .txt and .csv permitted', default=".txt")
-    parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="False")
+    parser.add_argument('--data-ext',dest='data_ext',type=str,help='name of datafile extension; only txt and csv permitted', default="txt")
+    parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
     parser.add_argument('--class-label', dest='class_label', type=str, help='outcome label of all datasets', default="Class")
     parser.add_argument('--instance-label', dest='instance_label', type=str, default="")
     #Defaults available (but less critical to check)
@@ -85,18 +86,18 @@ def main(argv):
             raise Exception("There must be at least one txt dataset in data_path directory")
         for datasetFilename in glob.glob(data_path+'/*.txt'): #Iterate through datasets
             if run_parallel:
-                submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
+                submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
             else:
-                submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
+                submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
 
     elif data_ext == 'csv':
         if len(glob.glob(data_path+'/*.csv')) == 0: #Check that there is at least 1 dataset
             raise Exception("There must be at least one csv dataset in data_path directory")
         for datasetFilename in glob.glob(data_path+'/*.csv'): #Iterate through datasets
             if run_parallel:
-                submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
+                submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
             else:
-                submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state)
+                submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
     else:
         raise Exception("File extension not recognized (only .txt or .csv permitted)")
 
@@ -107,12 +108,13 @@ def main(argv):
         writer.writerow(["class label",class_label])
         writer.writerow(["instance label", instance_label])
         writer.writerow(["random state",random_state])
+        writer.writerow(["categorical cutoff",categorical_cutoff])
     file.close()
 
 def submitLocalJob(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state):
     DataPreprocessingJob.job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
 
-def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_initial_analysis,export_feature_correlations,export_univariate,class_label,instance_label,match_label,random_state):
+def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state):
     job_ref = str(time.time())
     job_name = experiment_path+'/jobs/'+job_ref+'_run.sh'
     sh_file = open(job_name,'w')
@@ -125,7 +127,7 @@ def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method
     sh_file.write('#BSUB -e ' + experiment_path+'/logs/'+job_ref+'.e\n')
 
     this_file_path = os.path.dirname(os.path.realpath(__file__))
-    sh_file.write('python '+this_file_path+'/DataPreprocessingJob.py '+dataset_path+" "+experiment_path+" "+str(cv_partitions)+
+    sh_file.write('python '+this_file_path+'/ExploratoryAnalysisJob.py '+dataset_path+" "+experiment_path+" "+str(cv_partitions)+
                   " "+partition_method+" "+str(categorical_cutoff)+" "+export_exploratory_analysis+
                   " "+export_feature_correlations+" "+export_univariate_plots+" "+class_label+" "+instance_label+" "+match_label+
                   " "+str(random_state)+'\n')
