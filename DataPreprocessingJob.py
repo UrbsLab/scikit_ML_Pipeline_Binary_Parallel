@@ -14,10 +14,6 @@ import time
 
 def job(cv_train_path,cv_test_path,experiment_path,scale_data,impute_data,overwrite_cv,categorical_cutoff,class_label,instance_label,random_state):
 
-    #load single train and test Datasets
-    #edit respective methods to work on single pair of datasets
-    #figure out how to rename old files
-
     ##EDITABLE CODE#####################################################################################################
     categorical_attribute_headers = []
     ####################################################################################################################
@@ -36,6 +32,11 @@ def job(cv_train_path,cv_test_path,experiment_path,scale_data,impute_data,overwr
     #data_train[class_label] = data_train[class_label].astype(dtype='int64')
     #data_test[class_label] = data_test[class_label].astype(dtype='int64')
 
+    header = data_train.columns.values.tolist()
+    header.remove(class_label)
+    if instance_label != 'None':
+        header.remove(instance_label)
+
     #Identify categorical variables in dataset
     if len(categorical_attribute_headers) == 0:
         if instance_label == "None":
@@ -48,22 +49,23 @@ def job(cv_train_path,cv_test_path,experiment_path,scale_data,impute_data,overwr
 
     #Scale Data
     if scale_data:
-        data_train,data_test = dataScaling(data_train,data_test,class_label,instance_label)
+        data_train,data_test = dataScaling(data_train,data_test,class_label,instance_label,header)
 
     #Impute Missing Values in Training Data
     if impute_data and data_train.isnull().values.any():
-        data_train = imputeCVData(class_label,instance_label,categorical_variables,data_train,random_state)
+        data_train = imputeCVData(class_label,instance_label,categorical_variables,data_train,random_state,header)
 
     #Impute Missing Values in Testing Data
     if impute_data and data_test.isnull().values.any():
-        data_test = imputeCVData(class_label,instance_label,categorical_variables,data_test,random_state)
+        data_test = imputeCVData(class_label,instance_label,categorical_variables,data_test,random_state,header)
 
-    if overwrite_cv:
+    if overwrite_cv == 'True':
         #Remove old CV files
         os.remove(cv_train_path)
         os.remove(cv_test_path)
     else:
         #Rename old CV files
+        print(experiment_path + '/' + dataset_name + '/CVDatasets/'+dataset_name+'_CVOnly_' + str(cvCount) +"_Train.csv")
         os.rename(cv_train_path,experiment_path + '/' + dataset_name + '/CVDatasets/'+dataset_name+'_CVOnly_' + str(cvCount) +"_Train.csv")
         os.rename(cv_test_path,experiment_path + '/' + dataset_name + '/CVDatasets/'+dataset_name+'_CVOnly_' + str(cvCount) +"_Test.csv")
 
@@ -82,7 +84,6 @@ def job(cv_train_path,cv_test_path,experiment_path,scale_data,impute_data,overwr
             writer.writerow(row)
     file.close()
 
-
     #Save Runtime
     runtime_file = open(experiment_path + '/' + dataset_name + '/runtime/runtime_preprocessing_'+str(cvCount)+'.txt','w')
     runtime_file.write(str(time.time()-job_start_time))
@@ -95,7 +96,7 @@ def job(cv_train_path,cv_test_path,experiment_path,scale_data,impute_data,overwr
     job_file.close()
 
 ###################################
-def dataScaling(df,data_test,class_label,instance_label):
+def dataScaling(df,data_test,class_label,instance_label,header):
     scale_train_df = None
     scale_test_df = None
 
@@ -105,7 +106,6 @@ def dataScaling(df,data_test,class_label,instance_label):
         x_train = df.drop([class_label, instance_label], axis=1)
         inst_train = df[instance_label]  # pull out instance labels in case they include text
     y_train = df[class_label]
-    header = x_train.columns.values.tolist()
 
     # Scale features (x)
     scaler = StandardScaler()
@@ -114,9 +114,9 @@ def dataScaling(df,data_test,class_label,instance_label):
 
     # Recombine x and y
     if instance_label == None or instance_label == 'None':
-        scale_train_df = pd.concat([pd.DataFrame(y_train, columns=[class_label]), pd.DataFrame(x_train_scaled, columns=header)],axis=1, sort=False))
+        scale_train_df = pd.concat([pd.DataFrame(y_train, columns=[class_label]), pd.DataFrame(x_train_scaled, columns=header)],axis=1, sort=False)
     else:
-        scale_train_df = pd.concat([pd.DataFrame(y_train, columns=[class_label]), pd.DataFrame(instance_label, columns=[instance_label]),pd.DataFrame(x_train_scaled, columns=header)], axis=1, sort=False))
+        scale_train_df = pd.concat([pd.DataFrame(y_train, columns=[class_label]), pd.DataFrame(inst_train, columns=[instance_label]),pd.DataFrame(x_train_scaled, columns=header)], axis=1, sort=False)
 
     # Scale corresponding testing dataset
     df = data_test
@@ -132,18 +132,18 @@ def dataScaling(df,data_test,class_label,instance_label):
 
     # Recombine x and y
     if instance_label == None or instance_label == 'None':
-        scale_test_df = pd.concat([pd.DataFrame(y_test, columns=[class_label]), pd.DataFrame(x_test_scaled, columns=header)],axis=1, sort=False))
+        scale_test_df = pd.concat([pd.DataFrame(y_test, columns=[class_label]), pd.DataFrame(x_test_scaled, columns=header)],axis=1, sort=False)
     else:
-        scale_test_df = pd.concat([pd.DataFrame(y_test, columns=[class_label]), pd.DataFrame(inst_test, columns=[instance_label]),pd.DataFrame(x_test_scaled, columns=header)], axis=1, sort=False))
+        scale_test_df = pd.concat([pd.DataFrame(y_test, columns=[class_label]), pd.DataFrame(inst_test, columns=[instance_label]),pd.DataFrame(x_test_scaled, columns=header)], axis=1, sort=False)
 
     return scale_train_df, scale_test_df
 
 ###################################
-def imputeCVData(class_label,instance_label,categorical_variables,data,random_state):
+def imputeCVData(class_label,instance_label,categorical_variables,data,random_state,header):
     # Begin by imputing categorical variables with simple 'mode' imputation
-    for c in data_test.columns:
+    for c in data.columns:
         if c in categorical_variables:
-            each[c].fillna(each[c].mode().iloc[0], inplace=True)
+            data[c].fillna(data[c].mode().iloc[0], inplace=True)
 
     # Now impute remaining ordinal variables
     if instance_label == None or instance_label == 'None':
@@ -152,16 +152,15 @@ def imputeCVData(class_label,instance_label,categorical_variables,data,random_st
         x_train = data.drop([class_label, instance_label], axis=1).values
         inst_train = data[instance_label].values  # pull out instance labels in case they include text
     y_train = data[class_label].values
-    header = x_train.columns.values.tolist()
 
     # Impute features (x)
-    x_new_train = IterativeImputer(random_state=randomSeed,max_iter=30).fit_transform(x_train)
+    x_new_train = IterativeImputer(random_state=random_state,max_iter=30).fit_transform(x_train)
 
     # Recombine x and y
     if instance_label == None or instance_label == 'None':
-        data = pd.concat([pd.DataFrame(y_train, columns=[class_label]), pd.DataFrame(x_new_train, columns=header)],axis=1, sort=False))
+        data = pd.concat([pd.DataFrame(y_train, columns=[class_label]), pd.DataFrame(x_new_train, columns=header)],axis=1, sort=False)
     else:
-        data = pd.concat([pd.DataFrame(y_train, columns=[class_label]), pd.DataFrame(inst_train, columns=[instance_label]),pd.DataFrame(x_new_train, columns=header)], axis=1, sort=False))
+        data = pd.concat([pd.DataFrame(y_train, columns=[class_label]), pd.DataFrame(inst_train, columns=[instance_label]),pd.DataFrame(x_new_train, columns=header)], axis=1, sort=False)
 
     return data
 

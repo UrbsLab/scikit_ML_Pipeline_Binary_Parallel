@@ -3,12 +3,13 @@ import sys
 import os
 import argparse
 import glob
+import pandas as pd
 import DataPreprocessingJob
 import time
 import csv
 
 '''Sample Run Command:
-python DataPreprocessingMain.py --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1
+python DataPreprocessingMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
 '''
 
 def main(argv):
@@ -18,7 +19,7 @@ def main(argv):
     parser.add_argument('--output-path',dest='output_path',type=str,help='path to output directory')
     parser.add_argument('--experiment-name', dest='experiment_name',type=str, help='name of experiment output folder (no spaces)')
     #Defaults available
-    parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="False")
+    parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
     parser.add_argument('--scale-data',dest='scale_data',type=str,help='perform data scaling?',default="True")
     parser.add_argument('--impute-data', dest='impute_data',type=str,help='perform missing value data imputation? (required for most ML algorithms if missing data is present)',default="True")
     parser.add_argument('--overwrite-cv', dest='overwrite_cv',type=str,help='overwrites earlier cv datasets with new scaled/imputed ones',default="True")
@@ -54,7 +55,7 @@ def main(argv):
         full_path = output_path+"/"+experiment_name+"/"+dataset_directory_path
         cv_count = 0
         for cv_train_path in glob.glob(full_path+"/CVDatasets/*Train.csv"):
-            cv_test_path = cv_train_name.replace("Train.csv","Test.csv")
+            cv_test_path = cv_train_path.replace("Train.csv","Test.csv")
             if run_parallel:
                 submitClusterJob(cv_train_path,cv_test_path,output_path+'/'+experiment_name,scale_data,impute_data,overwrite_cv,categorical_cutoff,class_label,instance_label,random_state)
             else:
