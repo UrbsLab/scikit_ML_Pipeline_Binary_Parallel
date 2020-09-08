@@ -20,7 +20,6 @@ def main(argv):
     parser.add_argument('--output-path',dest='output_path',type=str,help='path to output directory')
     parser.add_argument('--experiment-name', dest='experiment_name',type=str, help='name of experiment output folder (no spaces)')
     #Defaults available (but critical to check)
-    parser.add_argument('--data-ext',dest='data_ext',type=str,help='name of datafile extension; only txt and csv permitted', default="txt")
     parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
     parser.add_argument('--class-label', dest='class_label', type=str, help='outcome label of all datasets', default="Class")
     parser.add_argument('--instance-label', dest='instance_label', type=str, default="")
@@ -39,7 +38,6 @@ def main(argv):
     output_path = options.output_path
     experiment_name = options.experiment_name
 
-    data_ext = options.data_ext
     run_parallel = options.run_parallel
     class_label = options.class_label
     if options.instance_label == '':
@@ -80,26 +78,23 @@ def main(argv):
     os.mkdir(output_path+'/'+experiment_name+'/logs')
     os.mkdir(output_path+'/'+ experiment_name+'/jobsCompleted')
 
-    #Run all datasets in target folder with specified file extension
-    if data_ext == 'txt':
-        if len(glob.glob(data_path+'/*.txt')) == 0: #Check that there is at least 1 dataset
-            raise Exception("There must be at least one txt dataset in data_path directory")
-        for datasetFilename in glob.glob(data_path+'/*.txt'): #Iterate through datasets
-            if run_parallel:
-                submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
-            else:
-                submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
+    #Determine file extension of datasets in target folder:
+    file_count = 0
+    unique_datanames = []
+    for datasetFilename in glob.glob(data_path+'/*'):
+        file_extension = datasetFilename.split('/')[-1].split('.')[-1]
+        data_name = datasetFilename.split('/')[-1].split('.')[0] #Save unique dataset names so that analysis is run only once if there is both a .txt and .csv version of dataset with same name.
+        if file_extension == 'txt' or file_extension == 'csv':
+            if data_name not in unique_datanames:
+                unique_datanames.append(data_name)
+                if run_parallel:
+                    submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
+                else:
+                    submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
+                file_count += 1
 
-    elif data_ext == 'csv':
-        if len(glob.glob(data_path+'/*.csv')) == 0: #Check that there is at least 1 dataset
-            raise Exception("There must be at least one csv dataset in data_path directory")
-        for datasetFilename in glob.glob(data_path+'/*.csv'): #Iterate through datasets
-            if run_parallel:
-                submitClusterJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
-            else:
-                submitLocalJob(datasetFilename,output_path+'/'+experiment_name,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state)
-    else:
-        raise Exception("File extension not recognized (only .txt or .csv permitted)")
+    if file_count == 0: #Check that there was at least 1 dataset
+        raise Exception("There must be at least one .txt or .csv dataset in data_path directory")
 
     # Save metadata to file
     with open(output_path+'/'+experiment_name+'/'+'metadata.csv',mode='w') as file:

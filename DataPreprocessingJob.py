@@ -12,6 +12,8 @@ from sklearn.impute import IterativeImputer
 import csv
 import time
 
+'''Phase 2 of Machine Learning Analysis Pipeline:'''
+
 def job(cv_train_path,cv_test_path,experiment_path,scale_data,impute_data,overwrite_cv,categorical_cutoff,class_label,instance_label,random_state):
 
     ##EDITABLE CODE#####################################################################################################

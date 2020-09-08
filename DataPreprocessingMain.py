@@ -8,7 +8,8 @@ import DataPreprocessingJob
 import time
 import csv
 
-'''Sample Run Command:
+'''Phase 2 of Machine Learning Analysis Pipeline:
+Sample Run Command:
 python DataPreprocessingMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
 '''
 
