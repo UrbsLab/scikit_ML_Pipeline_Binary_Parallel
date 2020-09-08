@@ -104,6 +104,7 @@ def main(argv):
         writer.writerow(["instance label", instance_label])
         writer.writerow(["random state",random_state])
         writer.writerow(["categorical cutoff",categorical_cutoff])
+        writer.writerow(["cv partitions",cv_partitions])
     file.close()
 
 def submitLocalJob(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state):
@@ -116,8 +117,8 @@ def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method
     sh_file.write('#!/bin/bash\n')
     sh_file.write('#BSUB -q doi_normal'+'\n')
     sh_file.write('#BSUB -J '+job_ref+'\n')
-    sh_file.write('bsub -R "rusage[mem=4G]"'+'\n')
-    sh_file.write('bsub -M 15GB'+'\n')
+    sh_file.write('#BSUB -R "rusage[mem=4G]"'+'\n')
+    sh_file.write('#BSUB -M 15GB'+'\n')
     sh_file.write('#BSUB -o ' + experiment_path+'/logs/'+job_ref+'.o\n')
     sh_file.write('#BSUB -e ' + experiment_path+'/logs/'+job_ref+'.e\n')
 

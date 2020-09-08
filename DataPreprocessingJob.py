@@ -67,7 +67,6 @@ def job(cv_train_path,cv_test_path,experiment_path,scale_data,impute_data,overwr
         os.remove(cv_test_path)
     else:
         #Rename old CV files
-        print(experiment_path + '/' + dataset_name + '/CVDatasets/'+dataset_name+'_CVOnly_' + str(cvCount) +"_Train.csv")
         os.rename(cv_train_path,experiment_path + '/' + dataset_name + '/CVDatasets/'+dataset_name+'_CVOnly_' + str(cvCount) +"_Train.csv")
         os.rename(cv_test_path,experiment_path + '/' + dataset_name + '/CVDatasets/'+dataset_name+'_CVOnly_' + str(cvCount) +"_Test.csv")
 

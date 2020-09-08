@@ -81,11 +81,11 @@ def main(argv):
                     submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instance_label,categorical_cutoff,instance_subset,'mi')
 
     #Update metadata
-    if metadata.shape[0] == 3: #Only update if metadata below hasn't been added before (i.e. in a previous phase 2 run)
+    if metadata.shape[0] == 7: #Only update if metadata below hasn't been added before (i.e. in a previous phase 2 run)
         with open(output_path + '/' + experiment_name + '/' + 'metadata.csv',mode='a') as file:
             writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerow(["Do Mutual Info",do_mutual_info])
-            writer.writerow(["Do MultiSURF", do_multiSURF])
+            writer.writerow(["Do MultiSURF", do_multisurf])
         file.close()
 
 def submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instance_label,categorical_cutoff,instance_subset,algorithm):
@@ -98,8 +98,8 @@ def submitClusterJob(command_text,experiment_path):
     sh_file.write('#!/bin/bash\n')
     sh_file.write('#BSUB -q doi_normal'+'\n')
     sh_file.write('#BSUB -J '+job_ref+'\n')
-    sh_file.write('bsub -R "rusage[mem=4G]"'+'\n')
-    sh_file.write('bsub -M 15GB'+'\n')
+    sh_file.write('#BSUB -R "rusage[mem=4G]"'+'\n')
+    sh_file.write('#BSUB -M 15GB'+'\n')
     sh_file.write('#BSUB -o ' + experiment_path+'/logs/'+job_ref+'.o\n')
     sh_file.write('#BSUB -e ' + experiment_path+'/logs/'+job_ref+'.e\n')
 

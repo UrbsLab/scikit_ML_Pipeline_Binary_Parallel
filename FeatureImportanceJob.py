@@ -57,10 +57,10 @@ def job(cv_train_path,experiment_path,random_state,class_label,instance_label,ca
     scoreDict, score_sorted_features = sort_save_fi_scores(scores, header, outpath)
 
     #Save CV MI Scores to pickled file
-    if not os.path.exists(experiment_path + '/' + dataset_name + "/"+outname+"/pickledForPhase3"):
-        os.mkdir(experiment_path + '/' + dataset_name + "/"+outname+"/pickledForPhase3")
+    if not os.path.exists(experiment_path + '/' + dataset_name + "/"+outname+"/pickledForPhase4"):
+        os.mkdir(experiment_path + '/' + dataset_name + "/"+outname+"/pickledForPhase4")
 
-    outfile = open(experiment_path + '/' + dataset_name + "/"+outname+"/pickledForPhase3/"+str(cvCount),'wb')
+    outfile = open(experiment_path + '/' + dataset_name + "/"+outname+"/pickledForPhase4/"+str(cvCount),'wb')
     pickle.dump([scores,scoreDict,score_sorted_features],outfile)
     outfile.close()
 
@@ -70,7 +70,7 @@ def job(cv_train_path,experiment_path,random_state,class_label,instance_label,ca
     runtime_file.close()
 
     # Print completion
-    print(dataset_name+" CV"+str(cvCount)+" phase 2 "+outname+" evaluation complete")
+    print(dataset_name+" CV"+str(cvCount)+" phase 3 "+outname+" evaluation complete")
     job_file = open(experiment_path + '/jobsCompleted/job_'+outname+'_' + dataset_name + '_'+str(cvCount)+'.txt', 'w')
     job_file.write('complete')
     job_file.close()
