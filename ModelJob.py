@@ -865,7 +865,7 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
     relieff = ReliefF()
     relieff.fit(dataFeaturesR, dataPhenotypesR)
     scores = relieff.feature_importances_
-    setattr(clf, 'expertKnowledge', scores)
+    setattr(clf, 'expert_knowledge', scores)
 
     model = clf.fit(x_train, y_train)
 

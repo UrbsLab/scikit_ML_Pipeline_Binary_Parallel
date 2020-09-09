@@ -111,7 +111,6 @@ def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method
                   " "+str(random_state)+'\n')
     sh_file.close()
     os.system('bsub < '+job_name)
-    pass
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

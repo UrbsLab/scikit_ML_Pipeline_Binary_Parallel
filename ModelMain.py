@@ -14,7 +14,7 @@ python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-nam
 
 def main(argv):
     #Parse arguments
-    default_arg = 'f'
+    default_arg = 'True'
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--output-path', dest='output_path', type=str, help='path to output directory')
     parser.add_argument('--experiment-name', dest='experiment_name', type=str, help='name of experiment (no spaces)')
