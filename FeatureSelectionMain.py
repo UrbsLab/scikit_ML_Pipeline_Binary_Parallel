@@ -67,7 +67,7 @@ def submitLocalJob(full_path,experiment_path,do_mutual_info,do_multisurf,max_fea
 
 def submitClusterJob(full_path,experiment_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv):
     job_ref = str(time.time())
-    job_name = experiment_path+'/jobs/'+job_ref+'_run.sh'
+    job_name = experiment_path+'/jobs/P4_'+job_ref+'_run.sh'
     sh_file = open(job_name,'w')
     sh_file.write('#!/bin/bash\n')
     sh_file.write('#BSUB -q doi_normal'+'\n')

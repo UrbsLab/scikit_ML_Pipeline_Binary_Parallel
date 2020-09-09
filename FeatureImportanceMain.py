@@ -93,7 +93,7 @@ def submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instan
 
 def submitClusterJob(command_text,experiment_path):
     job_ref = str(time.time())
-    job_name = experiment_path+'/jobs/'+job_ref+'_run.sh'
+    job_name = experiment_path+'/jobs/P3_'+job_ref+'_run.sh'
     sh_file = open(job_name,'w')
     sh_file.write('#!/bin/bash\n')
     sh_file.write('#BSUB -q doi_normal'+'\n')

@@ -76,7 +76,7 @@ def submitLocalJob(cv_train_path,cv_test_path,experiment_path,scale_data,impute_
 
 def submitClusterJob(cv_train_path,cv_test_path,experiment_path,scale_data,impute_data,overwrite_cv,categorical_cutoff,class_label,instance_label,random_state):
     job_ref = str(time.time())
-    job_name = experiment_path+'/jobs/'+job_ref+'_run.sh'
+    job_name = experiment_path+'/jobs/P2_'+job_ref+'_run.sh'
     sh_file = open(job_name,'w')
     sh_file.write('#!/bin/bash\n')
     sh_file.write('#BSUB -q doi_normal'+'\n')

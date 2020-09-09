@@ -112,7 +112,7 @@ def submitLocalJob(dataset_path,experiment_path,cv_partitions,partition_method,c
 
 def submitClusterJob(dataset_path,experiment_path,cv_partitions,partition_method,categorical_cutoff,export_exploratory_analysis,export_feature_correlations,export_univariate_plots,class_label,instance_label,match_label,random_state):
     job_ref = str(time.time())
-    job_name = experiment_path+'/jobs/'+job_ref+'_run.sh'
+    job_name = experiment_path+'/jobs/P1_'+job_ref+'_run.sh'
     sh_file = open(job_name,'w')
     sh_file.write('#!/bin/bash\n')
     sh_file.write('#BSUB -q doi_normal'+'\n')

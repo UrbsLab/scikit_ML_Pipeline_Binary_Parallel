@@ -33,11 +33,11 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve
 from sklearn import metrics
 
 import xgboost as xgb
-import lightgbm as lgb
+#import lightgbm as lgb
 import optuna #hyperparameter optimization
 from skrebate import ReliefF
 
-def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,plot_hyperparam_sweep,instance_label,class_label,random_state,cvCount):
+def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount):
     job_start_time = time.time()
     random.seed(random_state)
     np.random.seed(random_state)
@@ -61,31 +61,31 @@ def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_
     #Run model
     abbrev = {'logistic_regression':'LR','decision_tree':'DT','random_forest':'RF','naive_bayes':'NB','XGB':'XGB','LGB':'LGB','ANN':'ANN','SVM':'SVM','ExSTraCS':'ExSTraCS','eLCS':'eLCS','XCS':'XCS','gradient_boosting':'GB','k_neighbors':'KN'}
     if algorithm == 'logistic_regression':
-        ret = run_LR_full(trainX,trainY,testX,testY, random_state, cvCount,param_grid,n_trials,timeout,plot_hyperparam_sweep,full_path)
+        ret = run_LR_full(trainX,trainY,testX,testY, random_state, cvCount,param_grid,n_trials,timeout,export_hyper_sweep_plots,full_path)
     elif algorithm == 'decision_tree':
-        ret = run_DT_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,plot_hyperparam_sweep,full_path)
+        ret = run_DT_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,export_hyper_sweep_plots,full_path)
     elif algorithm == 'random_forest':
-        ret = run_RF_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_RF_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'naive_bayes':
-        ret = run_NB_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,plot_hyperparam_sweep,full_path)
+        ret = run_NB_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,export_hyper_sweep_plots,full_path)
     elif algorithm == 'XGB':
-        ret = run_XGB_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,plot_hyperparam_sweep,full_path)
+        ret = run_XGB_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,export_hyper_sweep_plots,full_path)
     elif algorithm == 'LGB':
-        ret = run_LGB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_LGB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'ANN':
-        ret = run_ANN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_ANN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'SVM':
-        ret = run_SVM_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_SVM_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'eLCS':
-        ret = run_eLCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,plot_hyperparam_sweep, full_path)
+        ret = run_eLCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'XCS':
-        ret = run_XCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,plot_hyperparam_sweep, full_path)
+        ret = run_XCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'ExSTraCS':
-        ret = run_ExSTraCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,plot_hyperparam_sweep, full_path)
+        ret = run_ExSTraCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'gradient_boosting':
-        ret = run_GB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_GB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'k_neighbors':
-        ret = run_KN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_KN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     pickle.dump(ret, open(full_path + '/training/' + abbrev[algorithm] + '_CV_' + str(cvCount) + "_metrics", 'wb'))
 
     # Save Runtime
@@ -100,6 +100,7 @@ def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_
     job_file.write('complete')
     job_file.close()
 
+#Hyperparameter optimization with optuna
 def hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric):
     cv = StratifiedKFold(n_splits=hype_cv, shuffle=True, random_state=randSeed)
     model = clone(est).set_params(**params)
@@ -110,6 +111,7 @@ def hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
     performance = np.mean(cross_val_score(model,x_train,y_train,cv=cv,scoring=scoring_metric ))
     return performance
 
+#Logistic Regression ###############################
 def objective_LR(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'penalty' : trial.suggest_categorical('penalty',param_grid['penalty']),
 			  'dual' : trial.suggest_categorical('dual', param_grid['dual']),
@@ -136,7 +138,6 @@ def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
     est = LogisticRegression()
     clf = clone(est).set_params(**best_trial.params)
     setattr(clf, 'random_state', randSeed)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -144,7 +145,6 @@ def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -165,6 +165,7 @@ def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Decision Tree ###############################
 def objective_DT(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'criterion' : trial.suggest_categorical('criterion',param_grid['criterion']),
                 'splitter' : trial.suggest_categorical('splitter', param_grid['splitter']),
@@ -193,7 +194,6 @@ def run_DT_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
     est = tree.DecisionTreeClassifier()
     clf = clone(est).set_params(**best_trial.params)
     setattr(clf, 'random_state', randSeed)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -201,7 +201,6 @@ def run_DT_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -222,6 +221,7 @@ def run_DT_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Random Forest ###############################
 def objective_RF(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'n_estimators' : trial.suggest_int('n_estimators',param_grid['n_estimators'][0], param_grid['n_estimators'][1]),
                 'criterion' : trial.suggest_categorical('criterion',param_grid['criterion']),
@@ -253,7 +253,6 @@ def run_RF_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
     est = RandomForestClassifier()
     clf = clone(est).set_params(**best_trial.params)
     setattr(clf, 'random_state', randSeed)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -261,7 +260,6 @@ def run_RF_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -282,6 +280,7 @@ def run_RF_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Naive Bayes ###############################
 def run_NB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
     #No hyperparameters to optimize.
 
@@ -294,7 +293,6 @@ def run_NB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     #Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     #Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -315,6 +313,7 @@ def run_NB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#XGBoost ###############################
 def objective_XGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     posInst = sum(y_train)
     negInst = len(y_train) - posInst
@@ -355,7 +354,6 @@ def run_XGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
     est = xgb.XGBClassifier()
     clf = clone(est).set_params(**best_trial.params)
     setattr(clf, 'random_state', randSeed)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -363,7 +361,6 @@ def run_XGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -384,6 +381,7 @@ def run_XGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#LGBoost ###############################
 def objective_LGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     posInst = sum(y_train)
     negInst = len(y_train) - posInst
@@ -422,7 +420,6 @@ def run_LGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
     est = lgb.LGBMClassifier()
     clf = clone(est).set_params(**best_trial.params)
     setattr(clf, 'random_state', randSeed)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -430,7 +427,6 @@ def run_LGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -451,6 +447,7 @@ def run_LGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Support Vector Machines ###############################
 def objective_SVM(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'kernel': trial.suggest_categorical('kernel', param_grid['kernel']),
               'C': trial.suggest_loguniform('C', param_grid['C'][0], param_grid['C'][1]),
@@ -478,7 +475,6 @@ def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
     est = SVC()
     clf = clone(est).set_params(**best_trial.params)
     setattr(clf, 'random_state', randSeed)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -486,7 +482,6 @@ def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -507,6 +502,7 @@ def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Gradient Boosting Classifier ###############################
 def objective_GB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'loss': trial.suggest_categorical('loss', param_grid['loss']),
               'learning_rate': trial.suggest_loguniform('learning_rate', param_grid['learning_rate'][0],param_grid['learning_rate'][1]),
@@ -536,7 +532,6 @@ def run_GB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
     est = GradientBoostingClassifier()
     clf = clone(est).set_params(**best_trial.params)
     setattr(clf, 'random_state', randSeed)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -544,7 +539,6 @@ def run_GB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -565,6 +559,7 @@ def run_GB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi
 
+#K-Neighbors Classifier ###############################
 def objective_KN(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {
         'n_neighbors': trial.suggest_int('n_neighbors', param_grid['n_neighbors'][0], param_grid['n_neighbors'][1]),
@@ -590,7 +585,6 @@ def run_KN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
     # Train model using 'best' hyperparameters
     est = KNeighborsClassifier()
     clf = clone(est).set_params(**best_trial.params)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -598,7 +592,6 @@ def run_KN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -619,7 +612,7 @@ def run_KN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi
 
-
+#Artificial Neural Networks ###############################
 def objective_ANN(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'activation': trial.suggest_categorical('activation', param_grid['activation']),
               'learning_rate': trial.suggest_categorical('learning_rate', param_grid['learning_rate']),
@@ -665,7 +658,6 @@ def run_ANN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
     est = MLPClassifier()
     clf = clone(est).set_params(**best_trial.params)
     setattr(clf, 'random_state', randSeed)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -673,7 +665,6 @@ def run_ANN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -694,6 +685,7 @@ def run_ANN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#eLCS (learning Classifier System) ###############################
 def objective_eLCS(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'learning_iterations': trial.suggest_categorical('learning_iterations', param_grid['learning_iterations']),
         'N': trial.suggest_categorical('N', param_grid['N']),
@@ -735,7 +727,6 @@ def run_eLCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trial
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -756,6 +747,7 @@ def run_eLCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trial
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#XCS (Learning classifier system) ###############################
 def objective_XCS(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'learning_iterations': trial.suggest_categorical('learning_iterations', param_grid['learning_iterations']),
         'N': trial.suggest_categorical('N', param_grid['N']),
@@ -796,7 +788,6 @@ def run_XCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -817,6 +808,7 @@ def run_XCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#ExSTraCS (learning classifier system) ###############################
 def objective_ExSTraCS(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'learning_iterations': trial.suggest_categorical('learning_iterations', param_grid['learning_iterations']),
         'N': trial.suggest_categorical('N', param_grid['N']),
@@ -866,7 +858,6 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
     relieff.fit(dataFeaturesR, dataPhenotypesR)
     scores = relieff.feature_importances_
     setattr(clf, 'expertKnowledge', scores)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -874,7 +865,6 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -986,20 +976,20 @@ def hyperparameters():
 
     # ExSTraCS
     # param_grid_ExSTraCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
-    param_grid_ExSTraCS = {'learning_iterations': [5000,10000],'N': [1000],'nu': [1,10]}
+    param_grid_ExSTraCS = {'learning_iterations': [100000],'N': [500,1000,2000],'nu': [1,10]}
 
     # eLCS
     # param_grid_eLCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
-    param_grid_eLCS = {'learning_iterations': [5000,10000],'N': [1000],'nu': [1,10]}
+    param_grid_eLCS = {'learning_iterations': [100000],'N': [500,1000,2000],'nu': [1,10]}
 
     # XCS
     # param_grid_XCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
-    param_grid_XCS = {'learning_iterations': [5000,10000],'N': [1000],'nu': [1,10]}
+    param_grid_XCS = {'learning_iterations': [100000],'N': [500,1000,2000],'nu': [1,10]}
 
     # GB
-    param_grid_GB = {'loss': ['deviance', 'exponential'], 'learning_rate': [1e-2, 1], 'min_samples_leaf': [1, 200],
-                     'max_depth': [1, 10], 'max_leaf_nodes': [None], 'tol': [1e-7], 'n_iter_no_change': [1, 20],
-                     'validation_fraction': [0.01, 0.31, 0.01]}
+    param_grid_GB = {'loss': ['deviance', 'exponential'], 'learning_rate': [1e-2, 1], 'min_samples_leaf': [1, 50],
+                     'max_depth': [1, 30], 'max_leaf_nodes': [None], 'tol': [1e-7], 'n_iter_no_change': [1, 20],
+                     'validation_fraction': [0.1]}
 
     # KN
     param_grid_KN = {'n_neighbors': [1, 100], 'weights': ['uniform', 'distance'], 'p': [1, 5],
