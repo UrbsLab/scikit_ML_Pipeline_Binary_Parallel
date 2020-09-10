@@ -8,8 +8,12 @@ import copy
 def job(experiment_path):
     # Get dataset paths
     datasets = os.listdir(experiment_path)
+
     datasets.remove('logs')
     datasets.remove('jobs')
+    datasets.remove('jobsCompleted')
+    datasets.remove('metadata.csv')
+
     dataset_directory_paths = []
     for dataset in datasets:
         full_path = experiment_path + "/" + dataset
@@ -34,7 +38,8 @@ def job(experiment_path):
     sig_cutoff = 0.05
 
     # Create new directory
-    os.mkdir(experiment_path+'/DatasetComparisons')
+    if not os.path.exists(experiment_path+'/DatasetComparisons'):
+        os.mkdir(experiment_path+'/DatasetComparisons')
 
     # Kruscall Wallis (ANOVA-like) comparison between datasets
     label = ['statistic', 'pvalue', 'sig']

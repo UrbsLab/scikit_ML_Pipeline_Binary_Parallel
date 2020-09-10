@@ -17,7 +17,10 @@ def job(cv_train_path,experiment_path,random_state,class_label,instance_label,ca
 
     dataset_name = cv_train_path.split('/')[-3]
     data = pd.read_csv(cv_train_path, sep=',')
-    dataFeatures = data.drop(class_label, axis=1).values
+    if instance_label != 'None':
+        dataFeatures = data.drop([class_label,instance_label], axis=1).values
+    else:
+        dataFeatures = data.drop([class_label], axis=1).values
     dataOutcome = data[class_label].values
     header = data.columns.values.tolist()
     header.remove(class_label)

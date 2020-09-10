@@ -43,7 +43,7 @@ def job(full_path,experiment_path,do_mutual_info,do_multisurf,max_features_to_ke
     # Print completion
     print(dataset_name + " phase 4 complete")
     experiment_path = '/'.join(full_path.split('/')[:-1])
-    job_file = open(experiment_path + '/jobsCompleted/job_featureSelection_' + dataset_name + '.txt', 'w')
+    job_file = open(experiment_path + '/jobsCompleted/job_featureselection_' + dataset_name + '.txt', 'w')
     job_file.write('complete')
     job_file.close()
 

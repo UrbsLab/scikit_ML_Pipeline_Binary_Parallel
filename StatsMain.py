@@ -6,18 +6,24 @@ import time
 import pandas as pd
 import StatsJob
 
-'''Sample Run Command:
+'''Phase 6 of Machine Learning Analysis Pipeline:
+Sample Run Command:
 python StatsMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
 '''
 
 def main(argv):
     #Parse arguments
     parser = argparse.ArgumentParser(description='')
+    #No defaults
     parser.add_argument('--output-path', dest='output_path', type=str, help='path to output directory')
     parser.add_argument('--experiment-name', dest='experiment_name', type=str, help='name of experiment (no spaces)')
+    #Defaults available
     parser.add_argument('--plot-ROC', dest='plot_ROC', type=str, default='True')
     parser.add_argument('--plot-PRC', dest='plot_PRC', type=str, default='True')
     parser.add_argument('--plot-FI', dest='plot_FI', type=str, default='True')
+    parser.add_argument('--res-mem', dest='reserved_memory', type=int, help='reserved memory for the job (in Gigabytes)',default=4)
+    parser.add_argument('--max-mem', dest='maximum_memory', type=int, help='maximum memory before the job is automatically terminated',default=15)
+    parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
 
     options = parser.parse_args(argv[1:])
     output_path = options.output_path
@@ -25,6 +31,9 @@ def main(argv):
     plot_ROC = options.plot_ROC
     plot_PRC = options.plot_PRC
     plot_FI = options.plot_FI
+    run_parallel = options.run_parallel
+    reserved_memory = options.reserved_memory
+    maximum_memory = options.maximum_memory
 
     # Argument checks
     if not os.path.exists(output_path):
@@ -37,20 +46,21 @@ def main(argv):
 
     class_label = metadata[0, 1]
     instance_label = metadata[1, 1]
+    cv_partitions = int(metadata[4,1])
 
-    do_LR = metadata[5,1]
-    do_DT = metadata[6,1]
-    do_RF = metadata[7,1]
-    do_NB = metadata[8,1]
-    do_XGB = metadata[9,1]
-    do_LGB = metadata[10,1]
-    do_SVM = metadata[11,1]
-    do_ANN = metadata[12,1]
-    do_ExSTraCS = metadata[13,1]
-    do_eLCS = metadata[14,1]
-    do_XCS = metadata[15,1]
-    do_GB = metadata[16, 1]
-    do_KN = metadata[17, 1]
+    do_LR = metadata[11,1]
+    do_DT = metadata[12,1]
+    do_RF = metadata[13,1]
+    do_NB = metadata[14,1]
+    do_XGB = metadata[15,1]
+    do_LGB = metadata[16,1]
+    do_SVM = metadata[17,1]
+    do_ANN = metadata[18,1]
+    do_ExSTraCS = metadata[19,1]
+    do_eLCS = metadata[20,1]
+    do_XCS = metadata[21,1]
+    do_GB = metadata[22, 1]
+    do_KN = metadata[23, 1]
 
     encodedAlgos = ''
     encodedAlgos = encode(do_LR,encodedAlgos)
@@ -75,23 +85,28 @@ def main(argv):
     dataset_paths.remove('metadata.csv')
     for dataset_directory_path in dataset_paths:
         full_path = output_path + "/" + experiment_name + "/" + dataset_directory_path
-        submitLocalJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label)
-        #submitClusterJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,output_path+'/'+experiment_name)
+        if run_parallel:
+            submitClusterJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,output_path+'/'+experiment_name,cv_partitions,reserved_memory,maximum_memory)
+        else:
+            submitLocalJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,cv_partitions)
 
-def submitLocalJob(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label):
-    StatsJob.job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label)
+def submitLocalJob(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,cv_partitions):
+    StatsJob.job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,cv_partitions)
 
-def submitClusterJob(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,experiment_path):
+def submitClusterJob(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,experiment_path,cv_partitions,reserved_memory,maximum_memory):
     job_ref = str(time.time())
-    job_name = experiment_path + '/jobs/' + job_ref + '_run.sh'
-    sh_file = open(job_name, 'w')
+    job_name = experiment_path + '/jobs/P6_' + job_ref + '_run.sh'
+    sh_file = open(job_name,'w')
     sh_file.write('#!/bin/bash\n')
-    sh_file.write('#BSUB -J ' + job_ref + '\n')
-    sh_file.write('#BSUB -o ' + experiment_path + '/logs/' + job_ref + '.o\n')
-    sh_file.write('#BSUB -e ' + experiment_path + '/logs/' + job_ref + '.e\n')
+    sh_file.write('#BSUB -q doi_normal'+'\n')
+    sh_file.write('#BSUB -J '+job_ref+'\n')
+    sh_file.write('#BSUB -R "rusage[mem='+str(reserved_memory)+'G]"'+'\n')
+    sh_file.write('#BSUB -M '+str(maximum_memory)+'GB'+'\n')
+    sh_file.write('#BSUB -o ' + experiment_path+'/logs/P6_'+job_ref+'.o\n')
+    sh_file.write('#BSUB -e ' + experiment_path+'/logs/P6_'+job_ref+'.e\n')
 
     this_file_path = os.path.dirname(os.path.realpath(__file__))
-    sh_file.write('python '+this_file_path+'/StatsMain.py '+full_path+" "+encoded_algos+" "+plot_ROC+" "+plot_PRC+" "+plot_FI+" "+class_label+" "+instance_label+'\n')
+    sh_file.write('python '+this_file_path+'/StatsJob.py '+full_path+" "+encoded_algos+" "+plot_ROC+" "+plot_PRC+" "+plot_FI+" "+class_label+" "+instance_label+" "+str(cv_partitions)+'\n')
     sh_file.close()
     os.system('bsub < ' + job_name)
     pass
