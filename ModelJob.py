@@ -353,6 +353,7 @@ def objective_XGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
                 'min_child_weight' : trial.suggest_loguniform('min_child_weight', param_grid['min_child_weight'][0], param_grid['min_child_weight'][1]),
                 'colsample_bytree' : trial.suggest_uniform('colsample_bytree', param_grid['colsample_bytree'][0], param_grid['colsample_bytree'][1]),
                 'scale_pos_weight' : trial.suggest_categorical('scale_pos_weight', [1.0, classWeight]),
+                'nthread' : trial.suggest_categorical('nthread',param_grid['nthread']),
                 'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
@@ -425,6 +426,7 @@ def objective_LGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
               'min_child_samples': trial.suggest_int('min_child_samples', param_grid['min_child_samples'][0],param_grid['min_child_samples'][1]),
               'n_estimators': trial.suggest_int('n_estimators', param_grid['n_estimators'][0],param_grid['n_estimators'][1]),
               'scale_pos_weight': trial.suggest_categorical('scale_pos_weight', [1.0, classWeight]),
+              'num_threads' : trial.suggest_categorical('num_threads',param_grid[num_threads']),
               'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
@@ -1040,62 +1042,116 @@ def hyperparameters(random_state):
     param_grid = {}
     #######EDITABLE CODE################################################################################################
     # Logistic Regression
+    """ Smaller datasets
     param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
                      'solver': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
                      'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
                      'random_state':[random_state]}
+    """
+    param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
+                     'solver': ['sag', 'saga'],
+                     'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
+                     'random_state':[random_state]}
 
     # Decision Tree
+    """ Smaller datasets
+    param_grid_DT = {'criterion': ['gini', 'entropy'],'splitter': ['best', 'random'],'max_depth': [1, 30],
+                     'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
+                     'class_weight': [None, 'balanced'],
+                     'random_state':[random_state]}
+    """
     param_grid_DT = {'criterion': ['gini', 'entropy'],'splitter': ['best', 'random'],'max_depth': [1, 30],
                      'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
                      'class_weight': [None, 'balanced'],
                      'random_state':[random_state]}
 
     # Random Forest
+    """ Smaller datasets
+    param_grid_RF = {'n_estimators': [10, 1000],'criterion': ['gini', 'entropy'],'max_depth': [1, 30],
+                     'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
+                     'bootstrap': [True],'oob_score': [False, True],'class_weight': [None, 'balanced'],
+                     'random_state':[random_state]}
+    """
     param_grid_RF = {'n_estimators': [10, 1000],'criterion': ['gini', 'entropy'],'max_depth': [1, 30],
                      'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
                      'bootstrap': [True],'oob_score': [False, True],'class_weight': [None, 'balanced'],
                      'random_state':[random_state]}
 
     # XG Boost - note: class weight balance is included as option internally
+    """ Smaller datasets
     param_grid_XGB = {'booster': ['gbtree'],'objective': ['binary:logistic'],'verbosity': [0],'reg_lambda': [1e-8, 1.0],
                       'alpha': [1e-8, 1.0],'eta': [1e-8, 1.0],'gamma': [1e-8, 1.0],'max_depth': [1, 30],
                       'grow_policy': ['depthwise', 'lossguide'],'n_estimators': [10, 1000],'min_samples_split': [2, 50],
                       'min_samples_leaf': [1, 50],'subsample': [0.5, 1.0],'min_child_weight': [0.1, 10],
-                      'colsample_bytree': [0.1, 1.0],'random_state':[random_state]}
+                      'colsample_bytree': [0.1, 1.0],'nthread':[1],'random_state':[random_state]}
+    """
+    param_grid_XGB = {'booster': ['gbtree'],'objective': ['binary:logistic'],'verbosity': [0],'reg_lambda': [1e-8, 1.0],
+                      'alpha': [1e-8, 1.0],'eta': [1e-8, 1.0],'gamma': [1e-8, 1.0],'max_depth': [1, 30],
+                      'grow_policy': ['depthwise', 'lossguide'],'n_estimators': [10, 1000],'min_samples_split': [2, 50],
+                      'min_samples_leaf': [1, 50],'subsample': [0.5, 1.0],'min_child_weight': [0.1, 10],
+                      'colsample_bytree': [0.1, 1.0],'nthread':[1],'random_state':[random_state]}
 
     # LG Boost - note: class weight balance is included as option internally
+    """ Smaller datasets
     param_grid_LGB = {'objective': ['binary'],'metric': ['binary_logloss'],'verbosity': [-1],'boosting_type': ['gbdt'],
                       'num_leaves': [2, 256],'max_depth': [1, 30],'lambda_l1': [1e-8, 10.0],'lambda_l2': [1e-8, 10.0],
                       'feature_fraction': [0.4, 1.0],'bagging_fraction': [0.4, 1.0],'bagging_freq': [1, 7],
-                      'min_child_samples': [5, 100],'n_estimators': [10, 1000],'random_state':[random_state]}
+                      'min_child_samples': [5, 100],'n_estimators': [10, 1000],'num_threads':[1],'random_state':[random_state]}
+    """
+    param_grid_LGB = {'objective': ['binary'],'metric': ['binary_logloss'],'verbosity': [-1],'boosting_type': ['gbdt'],
+                      'num_leaves': [2, 256],'max_depth': [1, 30],'lambda_l1': [1e-8, 10.0],'lambda_l2': [1e-8, 10.0],
+                      'feature_fraction': [0.4, 1.0],'bagging_fraction': [0.4, 1.0],'bagging_freq': [1, 7],
+                      'min_child_samples': [5, 100],'n_estimators': [10, 1000],'num_threads':[1],'random_state':[random_state]}
 
-    # SVM
+    # SVM - not approppriate for large instance spaces
+    """ Smaller datasets
+    param_grid_SVM = {'kernel': ['linear', 'poly', 'rbf'],'C': [0.1, 1000],'gamma': ['scale'],'degree': [1, 6],
+                      'probability': [True],'class_weight': [None, 'balanced'],'random_state':[random_state]}
+    """
     param_grid_SVM = {'kernel': ['linear', 'poly', 'rbf'],'C': [0.1, 1000],'gamma': ['scale'],'degree': [1, 6],
                       'probability': [True],'class_weight': [None, 'balanced'],'random_state':[random_state]}
 
     # ANN
+    """ Smaller datasets
+    param_grid_ANN = {'n_layers': [1, 3],'layer_size': [1, 100],'activation': ['identity', 'logistic', 'tanh', 'relu'],
+                      'learning_rate': ['constant', 'invscaling', 'adaptive'],'momentum': [.1, .9],
+                      'solver': ['sgd', 'adam'],'batch_size': ['auto'],'alpha': [0.0001, 0.05],'max_iter': [200],'random_state':[random_state]}
+    """
     param_grid_ANN = {'n_layers': [1, 3],'layer_size': [1, 100],'activation': ['identity', 'logistic', 'tanh', 'relu'],
                       'learning_rate': ['constant', 'invscaling', 'adaptive'],'momentum': [.1, .9],
                       'solver': ['sgd', 'adam'],'batch_size': ['auto'],'alpha': [0.0001, 0.05],'max_iter': [200],'random_state':[random_state]}
 
     # ExSTraCS
-    # param_grid_ExSTraCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
+    """ Smaller datasets
+    param_grid_ExSTraCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
+    """
     param_grid_ExSTraCS = {'learning_iterations': [200000],'N': [2000],'nu': [1],'random_state':[random_state],'rule_compaction':[None],'expert_knowledge':[None]}
 
     # eLCS
-    # param_grid_eLCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
+    """ Smaller datasets
+    param_grid_eLCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
+    """
     param_grid_eLCS = {'learning_iterations': [200000],'N': [2000],'nu': [1],'random_state':[random_state]}
 
     # XCS
-    # param_grid_XCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
+    """ Smaller datasets
+    param_grid_XCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
+    """
     param_grid_XCS = {'learning_iterations': [200000],'N': [2000],'nu': [1],'random_state':[random_state]}
 
     # GB
+    """ Smaller datasets
+    param_grid_GB = {'n_estimators': [10, 1000],'loss': ['deviance', 'exponential'], 'learning_rate': [.0001, 0.3], 'min_samples_leaf': [1, 50],
+                     'min_samples_split': [2, 50], 'max_depth': [1, 30],'random_state':[random_state]}
+    """
     param_grid_GB = {'n_estimators': [10, 1000],'loss': ['deviance', 'exponential'], 'learning_rate': [.0001, 0.3], 'min_samples_leaf': [1, 50],
                      'min_samples_split': [2, 50], 'max_depth': [1, 30],'random_state':[random_state]}
 
-    # KN
+    # KN - not appropriate for large instance spaces
+    """ Smaller datasets
+    param_grid_KN = {'n_neighbors': [1, 100], 'weights': ['uniform', 'distance'], 'p': [1, 5],
+                     'metric': ['euclidean', 'minkowski']}
+    """
     param_grid_KN = {'n_neighbors': [1, 100], 'weights': ['uniform', 'distance'], 'p': [1, 5],
                      'metric': ['euclidean', 'minkowski']}
 

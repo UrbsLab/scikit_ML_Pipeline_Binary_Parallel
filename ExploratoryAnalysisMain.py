@@ -72,7 +72,7 @@ def main(argv):
             raise Exception("Experiment Name must be unique")
 
         for char in experiment_name:
-            if not char in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890':
+            if not char in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_':
                 raise Exception('Experiment Name must be alphanumeric')
 
         #Create output folder if it doesn't already exist

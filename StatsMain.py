@@ -5,6 +5,7 @@ import sys
 import time
 import pandas as pd
 import StatsJob
+import glob
 
 '''Phase 6 of Machine Learning Analysis Pipeline:
 Sample Run Command:
@@ -24,6 +25,7 @@ def main(argv):
     parser.add_argument('--res-mem', dest='reserved_memory', type=int, help='reserved memory for the job (in Gigabytes)',default=4)
     parser.add_argument('--max-mem', dest='maximum_memory', type=int, help='maximum memory before the job is automatically terminated',default=15)
     parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
+    parser.add_argument('-c','--do-check',dest='do_check', help='Boolean: Specify whether to check for existence of all output files.', action='store_true')
 
     options = parser.parse_args(argv[1:])
     output_path = options.output_path
@@ -34,6 +36,7 @@ def main(argv):
     run_parallel = options.run_parallel
     reserved_memory = options.reserved_memory
     maximum_memory = options.maximum_memory
+    do_check = options.do_check
 
     # Argument checks
     if not os.path.exists(output_path):
@@ -77,18 +80,43 @@ def main(argv):
     encodedAlgos = encode(do_GB, encodedAlgos)
     encodedAlgos = encode(do_KN, encodedAlgos)
 
-    # Iterate through datasets
-    dataset_paths = os.listdir(output_path + "/" + experiment_name)
-    dataset_paths.remove('logs')
-    dataset_paths.remove('jobs')
-    dataset_paths.remove('jobsCompleted')
-    dataset_paths.remove('metadata.csv')
-    for dataset_directory_path in dataset_paths:
-        full_path = output_path + "/" + experiment_name + "/" + dataset_directory_path
-        if run_parallel:
-            submitClusterJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,output_path+'/'+experiment_name,cv_partitions,reserved_memory,maximum_memory)
+    if not do_check:
+        # Iterate through datasets
+        dataset_paths = os.listdir(output_path + "/" + experiment_name)
+        dataset_paths.remove('logs')
+        dataset_paths.remove('jobs')
+        dataset_paths.remove('jobsCompleted')
+        dataset_paths.remove('metadata.csv')
+        for dataset_directory_path in dataset_paths:
+            full_path = output_path + "/" + experiment_name + "/" + dataset_directory_path
+            if run_parallel:
+                submitClusterJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,output_path+'/'+experiment_name,cv_partitions,reserved_memory,maximum_memory)
+            else:
+                submitLocalJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,cv_partitions)
+    else:
+        datasets = os.listdir(output_path + "/" + experiment_name)
+        datasets.remove('logs')
+        datasets.remove('jobs')
+        datasets.remove('jobsCompleted')
+        if 'metadata.csv' in datasets:
+            datasets.remove('metadata.csv')
+        if 'DatasetComparisons' in datasets:
+            datasets.remove('DatasetComparisons')
+
+        phase6Jobs = []
+        for dataset in datasets:
+            phase6Jobs.append('job_stats_'+dataset+'.txt')
+
+        for filename in glob.glob(output_path + "/" + experiment_name+'/jobsCompleted/job_stats*'):
+            ref = filename.split('/')[-1]
+            phase6Jobs.remove(ref)
+        for job in phase6Jobs:
+            print(job)
+        if len(phase6Jobs) == 0:
+            print("All Phase 6 Jobs Completed")
         else:
-            submitLocalJob(full_path,encodedAlgos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,cv_partitions)
+            print("Above Phase 6 Jobs Not Completed")
+        print()
 
 def submitLocalJob(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,cv_partitions):
     StatsJob.job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,cv_partitions)
