@@ -426,7 +426,7 @@ def objective_LGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
               'min_child_samples': trial.suggest_int('min_child_samples', param_grid['min_child_samples'][0],param_grid['min_child_samples'][1]),
               'n_estimators': trial.suggest_int('n_estimators', param_grid['n_estimators'][0],param_grid['n_estimators'][1]),
               'scale_pos_weight': trial.suggest_categorical('scale_pos_weight', [1.0, classWeight]),
-              'num_threads' : trial.suggest_categorical('num_threads',param_grid[num_threads']),
+              'num_threads' : trial.suggest_categorical('num_threads',param_grid['num_threads']),
               'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
@@ -1048,8 +1048,15 @@ def hyperparameters(random_state):
                      'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
                      'random_state':[random_state]}
     """
+    """ Large sample size datasets
     param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
                      'solver': ['sag', 'saga'],
+                     'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
+                     'random_state':[random_state]}
+    """
+    
+    param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
+                     'solver': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
                      'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
                      'random_state':[random_state]}
 
