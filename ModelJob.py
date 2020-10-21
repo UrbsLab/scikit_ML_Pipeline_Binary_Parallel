@@ -162,7 +162,7 @@ def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Compute Precision/Recall curve and AUC
     prec, recall, thresholds = metrics.precision_recall_curve(y_test, probas_[:, 1])
-    prec, recall, thresholds = prec[::-1], recall[::-1], thresholds[::-1]
+    prec, recall, thresholds = prec[::-1], recall[::-1], thresholds[::-1] #reversed list orders
     prec_rec_auc = auc(recall, prec)
     ave_prec = metrics.average_precision_score(y_test, probas_[:, 1])
 
@@ -1054,7 +1054,7 @@ def hyperparameters(random_state):
                      'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
                      'random_state':[random_state]}
     """
-    
+
     param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
                      'solver': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
                      'class_weight': [None, 'balanced'],'max_iter': [10, 1000],

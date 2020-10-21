@@ -75,7 +75,7 @@ def job(experiment_path):
                 kruskal_summary.at[metric, 'mean_' + datasets[j]] = str(round(aveList[j], 6))
                 kruskal_summary.at[metric, 'std_' + datasets[j]] = str(round(sdList[j], 6))
 
-        kruskal_summary.to_csv(experiment_path+'/DatasetComparisons/KruskalWallis.csv')
+        kruskal_summary.to_csv(experiment_path+'/DatasetComparisons/'+algorithm+'_KruskalWallis.csv')
 
     # Mann-Whitney U test (Pairwise Comparisons)
     label = ['metric', 'dataset1', 'dataset2', 'statistic', 'pvalue', 'sig']

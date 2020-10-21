@@ -38,8 +38,8 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_
         data = pd.read_csv(dataset_path,na_values='NA',sep='\t')
 
     if export_exploratory_analysis == "True":
-        #data.describe().to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DescribeDataset.csv')
-        #data.dtypes.to_csv(experiment_path + '/' + dataset_name + '/preprocessing/'+'DtypesDataset.csv')
+        #data.describe().to_csv(experiment_path + '/' + dataset_name + '/exploratory/'+'DescribeDataset.csv')
+        #data.dtypes.to_csv(experiment_path + '/' + dataset_name + '/exploratory/'+'DtypesDataset.csv')
         data.nunique().to_csv(experiment_path + '/' + dataset_name + '/exploratory/'+'NumUniqueDataset.csv')
 
         #Assess Missingness in Attributes
@@ -56,22 +56,19 @@ def job(dataset_path,experiment_path,cv_partitions,partition_method,categorical_
 
     #Check class counts and automatically flip class encoding if there are more cases (i.e. 1) than controls (i.e. 0). This pipeline assumes that 0 encodes the majority class.
     class_counts = data[class_label].value_counts()
-    class_swap = False
-    if class_counts.index[0] == 1:
-        #Swap class labels (so 0 is majority class)(0's to 1's and 1's to 0's)
-        data[class_label]=data[class_label].replace(to_replace=0, value=2)
-        data[class_label]=data[class_label].replace(to_replace=1, value=0)
-        data[class_label]=data[class_label].replace(to_replace=2, value=1)
-        class_swap = True
+    class_counts.to_csv(experiment_path + '/' + dataset_name + '/exploratory/'+'ClassCounts.csv')
+
+    #if class_counts.index[0] == 1:
+    #    #Swap class labels (so 0 is majority class)(0's to 1's and 1's to 0's)
+    #    data[class_label]=data[class_label].replace(to_replace=0, value=2)
+    #    data[class_label]=data[class_label].replace(to_replace=1, value=0)
+    #    data[class_label]=data[class_label].replace(to_replace=2, value=1)
 
     if export_exploratory_analysis == "True":
         #Export Class Count Bar Graph
         class_counts.plot(kind='bar')
         plt.ylabel('Count')
-        if class_swap:
-            plt.title('Class Counts (Note: Class encoding swapped!)')
-        else:
-            plt.title('Class Counts')
+        plt.title('Class Counts')
         plt.savefig(experiment_path + '/' + dataset_name + '/exploratory/'+'ClassCounts.png')
         plt.close('all')
 
