@@ -1061,7 +1061,7 @@ def hyperparameters(random_state):
                      'random_state':[random_state]}
 
     # Decision Tree
-    """ Smaller datasets
+    """ Any datasets
     param_grid_DT = {'criterion': ['gini', 'entropy'],'splitter': ['best', 'random'],'max_depth': [1, 30],
                      'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
                      'class_weight': [None, 'balanced'],
@@ -1073,7 +1073,7 @@ def hyperparameters(random_state):
                      'random_state':[random_state]}
 
     # Random Forest
-    """ Smaller datasets
+    """ Any datasets
     param_grid_RF = {'n_estimators': [10, 1000],'criterion': ['gini', 'entropy'],'max_depth': [1, 30],
                      'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
                      'bootstrap': [True],'oob_score': [False, True],'class_weight': [None, 'balanced'],
@@ -1085,7 +1085,7 @@ def hyperparameters(random_state):
                      'random_state':[random_state]}
 
     # XG Boost - note: class weight balance is included as option internally
-    """ Smaller datasets
+    """ Any datasets
     param_grid_XGB = {'booster': ['gbtree'],'objective': ['binary:logistic'],'verbosity': [0],'reg_lambda': [1e-8, 1.0],
                       'alpha': [1e-8, 1.0],'eta': [1e-8, 1.0],'gamma': [1e-8, 1.0],'max_depth': [1, 30],
                       'grow_policy': ['depthwise', 'lossguide'],'n_estimators': [10, 1000],'min_samples_split': [2, 50],
@@ -1099,7 +1099,7 @@ def hyperparameters(random_state):
                       'colsample_bytree': [0.1, 1.0],'nthread':[1],'random_state':[random_state]}
 
     # LG Boost - note: class weight balance is included as option internally
-    """ Smaller datasets
+    """ Any datasets
     param_grid_LGB = {'objective': ['binary'],'metric': ['binary_logloss'],'verbosity': [-1],'boosting_type': ['gbdt'],
                       'num_leaves': [2, 256],'max_depth': [1, 30],'lambda_l1': [1e-8, 10.0],'lambda_l2': [1e-8, 10.0],
                       'feature_fraction': [0.4, 1.0],'bagging_fraction': [0.4, 1.0],'bagging_freq': [1, 7],
@@ -1119,7 +1119,7 @@ def hyperparameters(random_state):
                       'probability': [True],'class_weight': [None, 'balanced'],'random_state':[random_state]}
 
     # ANN
-    """ Smaller datasets
+    """ Any datasets
     param_grid_ANN = {'n_layers': [1, 3],'layer_size': [1, 100],'activation': ['identity', 'logistic', 'tanh', 'relu'],
                       'learning_rate': ['constant', 'invscaling', 'adaptive'],'momentum': [.1, .9],
                       'solver': ['sgd', 'adam'],'batch_size': ['auto'],'alpha': [0.0001, 0.05],'max_iter': [200],'random_state':[random_state]}

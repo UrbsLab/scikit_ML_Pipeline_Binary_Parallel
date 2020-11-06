@@ -112,7 +112,7 @@ def submitClusterJob(full_path,experiment_path,do_mutual_info,do_multisurf,max_f
     job_name = experiment_path+'/jobs/P4_'+job_ref+'_run.sh'
     sh_file = open(job_name,'w')
     sh_file.write('#!/bin/bash\n')
-    sh_file.write('#BSUB -q doi_normal'+'\n')
+    sh_file.write('#BSUB -q i2c2_normal'+'\n')
     sh_file.write('#BSUB -J '+job_ref+'\n')
     sh_file.write('#BSUB -R "rusage[mem='+str(reserved_memory)+'G]"'+'\n')
     sh_file.write('#BSUB -M '+str(maximum_memory)+'GB'+'\n')
