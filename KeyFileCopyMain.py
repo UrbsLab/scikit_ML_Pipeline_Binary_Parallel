@@ -1,7 +1,9 @@
+from distutils.dir_util import copy_tree
+import argparse
 import sys
 import os
+import glob
 import shutil
-from distutils.dir_util import copy_tree
 
 def main(argv):
     #Parse arguments
@@ -23,24 +25,24 @@ def main(argv):
     os.mkdir(output_path+'/'+experiment_name+'/KeyFileCopy')
 
     #Copy Dataset comparisons if present
-    if os.path.exists(output_path+'/'+experiment_name+ '/' + dataset_nameoutput_path+'/'+experiment_name+'/DatasetComparisons'):
+    if os.path.exists(output_path+'/'+experiment_name+'/DatasetComparisons'):
         #Make corresponding data folder
         os.mkdir(output_path+'/'+experiment_name+'/KeyFileCopy'+'/DatasetComparisons')
         copy_tree(output_path+'/'+experiment_name+'/DatasetComparisons', output_path+'/'+experiment_name+'/KeyFileCopy'+'/DatasetComparisons')
 
     #Create dataset name folders
     for datasetFilename in glob.glob(data_path+'/*'):
-        dataset_name = dataset_path.split('/')[-1].split('.')[0]
+        dataset_name = datasetFilename.split('/')[-1].split('.')[0]
         if not os.path.exists(output_path+'/'+experiment_name+'/KeyFileCopy'+ '/' + dataset_name):
             os.mkdir(output_path+'/'+experiment_name+'/KeyFileCopy'+ '/' + dataset_name)
             os.mkdir(output_path+'/'+experiment_name+'/KeyFileCopy'+ '/' + dataset_name+'/results')
             #copy respective results folder
-            copy_tree(output_path+'/'+experiment_name+ '/' + dataset_name+'/training'+'/results', output_path+'/'+experiment_name+'/KeyFileCopy'+ '/' + dataset_name+'/results')
+            copy_tree(output_path+'/'+experiment_name+ '/' + dataset_name+'/training'+'/results/', output_path+'/'+experiment_name+'/KeyFileCopy'+ '/' + dataset_name+'/results/')
             #Copy class balance
             shutil.copy(output_path+'/'+experiment_name+ '/' + dataset_name+'/exploratory/'+'ClassCounts.png', output_path+'/'+experiment_name+'/KeyFileCopy'+ '/' + dataset_name +'/' +'ClassCounts.png')
             shutil.copy(output_path+'/'+experiment_name+ '/' + dataset_name+'/exploratory/'+'ClassCounts.csv', output_path+'/'+experiment_name+'/KeyFileCopy'+ '/' + dataset_name +'/' +'ClassCounts.csv')
     #Copy metafile
-    shutil.copy(output_path+'/'+experiment_name+ '/' + dataset_name+'/metadata.csv'
+    shutil.copy(output_path+'/'+experiment_name+ '/metadata.csv',output_path+'/'+experiment_name+'/KeyFileCopy'+ '/metadata.csv')
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
