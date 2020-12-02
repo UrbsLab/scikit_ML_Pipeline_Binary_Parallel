@@ -126,7 +126,7 @@ def main(argv):
         print()
 
 def submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instance_label,categorical_cutoff,instance_subset,algorithm):
-    FeatureProcessingJob.job(cv_train_path,experiment_path,random_state,class_label,instance_label,categorical_cutoff,instance_subset,algorithm)
+    FeatureImportanceJob.job(cv_train_path,experiment_path,random_state,class_label,instance_label,categorical_cutoff,instance_subset,algorithm)
 
 def submitClusterJob(command_text,experiment_path,reserved_memory,maximum_memory):
     job_ref = str(time.time())
