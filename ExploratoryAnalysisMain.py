@@ -10,7 +10,12 @@ import csv
 '''Phase 1 of Machine Learning Analysis Pipeline:
 Sample Run Command:
 python ExploratoryAalysisMain.py --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1
+
+WARNINGS:
+-no spaces are allowed in filenames!! - this will lead to 'invalid litteral' export_exploratory_analysis
+-all datasets in target folder being analyzed must have the same class and instance labels (if any for the latter)
 '''
+
 
 def main(argv):
     #Parse arguments
