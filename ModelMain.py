@@ -18,7 +18,7 @@ python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-nam
 
 def main(argv):
     #Parse arguments
-    default_arg = 'False'
+    default_arg = 'True'
     parser = argparse.ArgumentParser(description='')
     #No defaults
     parser.add_argument('--output-path', dest='output_path', type=str, help='path to output directory')

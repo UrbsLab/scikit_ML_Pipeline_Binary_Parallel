@@ -127,7 +127,6 @@ def submitClusterJob(cv_train_path,cv_test_path,experiment_path,scale_data,imput
                   " "+impute_data+" "+overwrite_cv+" "+str(categorical_cutoff)+" "+class_label+" "+instance_label+" "+str(random_state)+'\n')
     sh_file.close()
     os.system('bsub < '+job_name)
-    pass
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
