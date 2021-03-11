@@ -13,7 +13,7 @@ from statistics import mean,stdev
 import pickle
 import copy
 
-def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label):
+def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_label,cv_partitions):
     job_start_time = time.time()
     data_name = full_path.split('/')[-1]
 
@@ -40,10 +40,9 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
     abbrev = {'logistic_regression':'LR','decision_tree':'DT','random_forest':'RF','naive_bayes':'NB','XGB':'XGB','LGB':'LGB','ANN':'ANN','SVM':'SVM','ExSTraCS':'ExSTraCS','eLCS':'eLCS','XCS':'XCS','gradient_boosting':'GB','k_neighbors':'KN'}
     colors = {'logistic_regression':'black','decision_tree':'yellow','random_forest':'orange','naive_bayes':'grey','XGB':'purple','LGB':'aqua','ANN':'red','SVM':'blue','ExSTraCS':'lightcoral','eLCS':'firebrick','XCS':'deepskyblue','gradient_boosting':'bisque','k_neighbors':'seagreen'}
     #Get Original Headers
-    original_headers = pd.read_csv(full_path+"/preprocessing/OriginalHeaders.csv",sep=',').columns.values.tolist()
+    original_headers = pd.read_csv(full_path+"/exploratory/OriginalHeaders.csv",sep=',').columns.values.tolist()
 
     #Main Ops
-    cvPartitions = int(len(glob.glob(full_path + '/CVDatasets/*.csv')) / 2)
     result_table = []
     metric_dict = {}
     for algorithm in algorithms:
@@ -73,7 +72,7 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
         precs = []
         praucs = []
         aveprecs = []
-        for cvCount in range(cvPartitions):
+        for cvCount in range(0,cv_partitions):
             result_file = full_path+'/training/'+abbrev[algorithm]+"_CV_"+str(cvCount)+"_metrics"
             file = open(result_file, 'rb')
             results = pickle.load(file)
@@ -138,7 +137,7 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
         if plot_ROC=='True':
             plt.figure(figsize=(7, 7))
             # Plot individual CV ROC line
-            for i in range(cvPartitions):
+            for i in range(0,cv_partitions):
                 plt.plot(alg_result_table[i][0], alg_result_table[i][1], lw=1, alpha=0.3,label='ROC fold %d (AUC = %0.2f)' % (i, alg_result_table[i][2]))
 
             plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',label='Chance', alpha=.8)
@@ -184,7 +183,7 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
         metric_dict[algorithm] = results
 
         for i in range(0, len(FI_ave)):
-            FI_ave[i] = FI_ave[i] / float(cvPartitions)
+            FI_ave[i] = FI_ave[i] / float(cv_partitions)
 
         save_FI(FI_all, abbrev[algorithm], original_headers, full_path)
         mean_ave_prec = np.mean(aveprecs)
@@ -568,4 +567,4 @@ def compound_FI_plot(fi_list, algorithms, algColors, all_feature_listToViz, figN
     plt.close('all')
 
 if __name__ == '__main__':
-    job(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],sys.argv[7])
+    job(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],sys.argv[7],int(sys.argv[8]))

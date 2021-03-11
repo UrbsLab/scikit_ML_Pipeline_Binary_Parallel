@@ -3,6 +3,7 @@ import time
 import random
 import pandas as pd
 import numpy as np
+import os
 
 import pickle
 import copy
@@ -35,15 +36,14 @@ from sklearn import metrics
 import xgboost as xgb
 import lightgbm as lgb
 import optuna #hyperparameter optimization
-from skrebate import ReliefF
 
-def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,plot_hyperparam_sweep,instance_label,class_label,random_state,cvCount):
+def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount,filter_poor_features):
     job_start_time = time.time()
     random.seed(random_state)
     np.random.seed(random_state)
 
     #Get hyperparameter grid
-    param_grid = hyperparameters()[algorithm]
+    param_grid = hyperparameters(random_state)[algorithm]
 
     #Get X and Y
     train = pd.read_csv(train_file_path)
@@ -61,31 +61,31 @@ def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_
     #Run model
     abbrev = {'logistic_regression':'LR','decision_tree':'DT','random_forest':'RF','naive_bayes':'NB','XGB':'XGB','LGB':'LGB','ANN':'ANN','SVM':'SVM','ExSTraCS':'ExSTraCS','eLCS':'eLCS','XCS':'XCS','gradient_boosting':'GB','k_neighbors':'KN'}
     if algorithm == 'logistic_regression':
-        ret = run_LR_full(trainX,trainY,testX,testY, random_state, cvCount,param_grid,n_trials,timeout,plot_hyperparam_sweep,full_path)
+        ret = run_LR_full(trainX,trainY,testX,testY, random_state, cvCount,param_grid,n_trials,timeout,export_hyper_sweep_plots,full_path)
     elif algorithm == 'decision_tree':
-        ret = run_DT_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,plot_hyperparam_sweep,full_path)
+        ret = run_DT_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,export_hyper_sweep_plots,full_path)
     elif algorithm == 'random_forest':
-        ret = run_RF_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_RF_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'naive_bayes':
-        ret = run_NB_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,plot_hyperparam_sweep,full_path)
+        ret = run_NB_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,export_hyper_sweep_plots,full_path)
     elif algorithm == 'XGB':
-        ret = run_XGB_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,plot_hyperparam_sweep,full_path)
+        ret = run_XGB_full(trainX, trainY, testX,testY, random_state,cvCount, param_grid,n_trials, timeout,export_hyper_sweep_plots,full_path)
     elif algorithm == 'LGB':
-        ret = run_LGB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_LGB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'ANN':
-        ret = run_ANN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_ANN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'SVM':
-        ret = run_SVM_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_SVM_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'eLCS':
-        ret = run_eLCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,plot_hyperparam_sweep, full_path)
+        ret = run_eLCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'XCS':
-        ret = run_XCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,plot_hyperparam_sweep, full_path)
+        ret = run_XCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'ExSTraCS':
-        ret = run_ExSTraCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,plot_hyperparam_sweep, full_path)
+        ret = run_ExSTraCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,export_hyper_sweep_plots, full_path,filter_poor_features,instance_label,class_label)
     elif algorithm == 'gradient_boosting':
-        ret = run_GB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_GB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'k_neighbors':
-        ret = run_KN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,plot_hyperparam_sweep, full_path)
+        ret = run_KN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     pickle.dump(ret, open(full_path + '/training/' + abbrev[algorithm] + '_CV_' + str(cvCount) + "_metrics", 'wb'))
 
     # Save Runtime
@@ -100,6 +100,7 @@ def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_
     job_file.write('complete')
     job_file.close()
 
+#Hyperparameter optimization with optuna
 def hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric):
     cv = StratifiedKFold(n_splits=hype_cv, shuffle=True, random_state=randSeed)
     model = clone(est).set_params(**params)
@@ -110,6 +111,7 @@ def hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
     performance = np.mean(cross_val_score(model,x_train,y_train,cv=cv,scoring=scoring_metric ))
     return performance
 
+#Logistic Regression ###############################
 def objective_LR(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'penalty' : trial.suggest_categorical('penalty',param_grid['penalty']),
 			  'dual' : trial.suggest_categorical('dual', param_grid['dual']),
@@ -117,7 +119,7 @@ def objective_LR(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, sc
 			  'solver' : trial.suggest_categorical('solver',param_grid['solver']),
 			  'class_weight' : trial.suggest_categorical('class_weight',param_grid['class_weight']),
 			  'max_iter' : trial.suggest_loguniform('max_iter',param_grid['max_iter'][0], param_grid['max_iter'][1]),
-			  'n_jobs' : trial.suggest_categorical('n_jobs',param_grid['n_jobs'])}
+              'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
@@ -130,12 +132,18 @@ def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
     if do_plot == 'True':
         fig = optuna.visualization.plot_parallel_coordinate(study)
         fig.write_image(full_path+'/training/LR_ParamOptimization_'+str(i)+'.png')
+
+    print('Best trial:')
     best_trial = study.best_trial
+    print('  Value: ', best_trial.value)
+    print('  Params: ')
+    for key, value in best_trial.params.items():
+        print('    {}: {}'.format(key, value))
 
     # Train model using 'best' hyperparameters
     est = LogisticRegression()
-    clf = clone(est).set_params(**best_trial.params)
-    setattr(clf, 'random_state', randSeed)
+    clf = est.set_params(**best_trial.params)
+    print(clf)
 
     model = clf.fit(x_train, y_train)
 
@@ -144,7 +152,6 @@ def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -156,7 +163,7 @@ def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Compute Precision/Recall curve and AUC
     prec, recall, thresholds = metrics.precision_recall_curve(y_test, probas_[:, 1])
-    prec, recall, thresholds = prec[::-1], recall[::-1], thresholds[::-1]
+    prec, recall, thresholds = prec[::-1], recall[::-1], thresholds[::-1] #reversed list orders
     prec_rec_auc = auc(recall, prec)
     ave_prec = metrics.average_precision_score(y_test, probas_[:, 1])
 
@@ -165,6 +172,7 @@ def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Decision Tree ###############################
 def objective_DT(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'criterion' : trial.suggest_categorical('criterion',param_grid['criterion']),
                 'splitter' : trial.suggest_categorical('splitter', param_grid['splitter']),
@@ -172,7 +180,8 @@ def objective_DT(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, sc
                 'min_samples_split' : trial.suggest_int('min_samples_split', param_grid['min_samples_split'][0], param_grid['min_samples_split'][1]),
                 'min_samples_leaf' : trial.suggest_int('min_samples_leaf', param_grid['min_samples_leaf'][0], param_grid['min_samples_leaf'][1]),
                 'max_features' : trial.suggest_categorical('max_features',param_grid['max_features']),
-                'class_weight' : trial.suggest_categorical('class_weight',param_grid['class_weight'])}
+                'class_weight' : trial.suggest_categorical('class_weight',param_grid['class_weight']),
+                'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_DT_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
@@ -187,12 +196,17 @@ def run_DT_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
         fig = optuna.visualization.plot_parallel_coordinate(study)
         fig.write_image(full_path+'/training/DT_ParamOptimization_'+str(i)+'.png')
 
+    print('Best trial:')
     best_trial = study.best_trial
+    print('  Value: ', best_trial.value)
+    print('  Params: ')
+    for key, value in best_trial.params.items():
+        print('    {}: {}'.format(key, value))
 
     # Train model using 'best' hyperparameters
     est = tree.DecisionTreeClassifier()
-    clf = clone(est).set_params(**best_trial.params)
-    setattr(clf, 'random_state', randSeed)
+    clf = est.set_params(**best_trial.params)
+    print(clf)
 
     model = clf.fit(x_train, y_train)
 
@@ -201,7 +215,6 @@ def run_DT_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -222,6 +235,7 @@ def run_DT_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Random Forest ###############################
 def objective_RF(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'n_estimators' : trial.suggest_int('n_estimators',param_grid['n_estimators'][0], param_grid['n_estimators'][1]),
                 'criterion' : trial.suggest_categorical('criterion',param_grid['criterion']),
@@ -231,8 +245,8 @@ def objective_RF(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, sc
                 'max_features' : trial.suggest_categorical('max_features',param_grid['max_features']),
                 'bootstrap' : trial.suggest_categorical('bootstrap',param_grid['bootstrap']),
                 'oob_score' : trial.suggest_categorical('oob_score',param_grid['oob_score']),
-                'n_jobs' : trial.suggest_categorical('n_jobs',param_grid['n_jobs']),
-                'class_weight' : trial.suggest_categorical('class_weight',param_grid['class_weight'])}
+                'class_weight' : trial.suggest_categorical('class_weight',param_grid['class_weight']),
+                'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_RF_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
@@ -247,12 +261,17 @@ def run_RF_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
         fig = optuna.visualization.plot_parallel_coordinate(study)
         fig.write_image(full_path+'/training/RF_ParamOptimization_'+str(i)+'.png')
 
+    print('Best trial:')
     best_trial = study.best_trial
+    print('  Value: ', best_trial.value)
+    print('  Params: ')
+    for key, value in best_trial.params.items():
+        print('    {}: {}'.format(key, value))
 
     # Train model using 'best' hyperparameters
     est = RandomForestClassifier()
-    clf = clone(est).set_params(**best_trial.params)
-    setattr(clf, 'random_state', randSeed)
+    clf = est.set_params(**best_trial.params)
+    print(clf)
 
     model = clf.fit(x_train, y_train)
 
@@ -261,7 +280,6 @@ def run_RF_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -282,6 +300,7 @@ def run_RF_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Naive Bayes ###############################
 def run_NB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
     #No hyperparameters to optimize.
 
@@ -294,7 +313,6 @@ def run_NB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     #Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     #Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -315,6 +333,7 @@ def run_NB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#XGBoost ###############################
 def objective_XGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     posInst = sum(y_train)
     negInst = len(y_train) - posInst
@@ -334,7 +353,9 @@ def objective_XGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
                 'subsample' : trial.suggest_uniform('subsample', param_grid['subsample'][0], param_grid['subsample'][1]),
                 'min_child_weight' : trial.suggest_loguniform('min_child_weight', param_grid['min_child_weight'][0], param_grid['min_child_weight'][1]),
                 'colsample_bytree' : trial.suggest_uniform('colsample_bytree', param_grid['colsample_bytree'][0], param_grid['colsample_bytree'][1]),
-                'scale_pos_weight' : trial.suggest_categorical('scale_pos_weight', [1.0, classWeight])}
+                'scale_pos_weight' : trial.suggest_categorical('scale_pos_weight', [1.0, classWeight]),
+                'nthread' : trial.suggest_categorical('nthread',param_grid['nthread']),
+                'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_XGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
@@ -349,13 +370,17 @@ def run_XGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
         fig = optuna.visualization.plot_parallel_coordinate(study)
         fig.write_image(full_path+'/training/XGB_ParamOptimization_'+str(i)+'.png')
 
+    print('Best trial:')
     best_trial = study.best_trial
+    print('  Value: ', best_trial.value)
+    print('  Params: ')
+    for key, value in best_trial.params.items():
+        print('    {}: {}'.format(key, value))
 
     # Train model using 'best' hyperparameters
     est = xgb.XGBClassifier()
     clf = clone(est).set_params(**best_trial.params)
     setattr(clf, 'random_state', randSeed)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -363,7 +388,6 @@ def run_XGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -384,6 +408,7 @@ def run_XGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#LGBoost ###############################
 def objective_LGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     posInst = sum(y_train)
     negInst = len(y_train) - posInst
@@ -401,7 +426,9 @@ def objective_LGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
               'bagging_freq': trial.suggest_int('bagging_freq', param_grid['bagging_freq'][0],param_grid['bagging_freq'][1]),
               'min_child_samples': trial.suggest_int('min_child_samples', param_grid['min_child_samples'][0],param_grid['min_child_samples'][1]),
               'n_estimators': trial.suggest_int('n_estimators', param_grid['n_estimators'][0],param_grid['n_estimators'][1]),
-              'scale_pos_weight': trial.suggest_categorical('scale_pos_weight', [1.0, classWeight])}
+              'scale_pos_weight': trial.suggest_categorical('scale_pos_weight', [1.0, classWeight]),
+              'num_threads' : trial.suggest_categorical('num_threads',param_grid['num_threads']),
+              'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_LGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
@@ -416,12 +443,17 @@ def run_LGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
         fig = optuna.visualization.plot_parallel_coordinate(study)
         fig.write_image(full_path+'/training/LGB_ParamOptimization_'+str(i)+'.png')
 
+    print('Best trial:')
     best_trial = study.best_trial
+    print('  Value: ', best_trial.value)
+    print('  Params: ')
+    for key, value in best_trial.params.items():
+        print('    {}: {}'.format(key, value))
 
     # Train model using 'best' hyperparameters
     est = lgb.LGBMClassifier()
-    clf = clone(est).set_params(**best_trial.params)
-    setattr(clf, 'random_state', randSeed)
+    clf = est.set_params(**best_trial.params)
+    print(clf)
 
     model = clf.fit(x_train, y_train)
 
@@ -430,7 +462,6 @@ def run_LGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -451,13 +482,15 @@ def run_LGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Support Vector Machines ###############################
 def objective_SVM(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'kernel': trial.suggest_categorical('kernel', param_grid['kernel']),
               'C': trial.suggest_loguniform('C', param_grid['C'][0], param_grid['C'][1]),
               'gamma': trial.suggest_categorical('gamma', param_grid['gamma']),
               'degree': trial.suggest_int('degree', param_grid['degree'][0], param_grid['degree'][1]),
               'probability': trial.suggest_categorical('probability', param_grid['probability']),
-              'class_weight': trial.suggest_categorical('class_weight', param_grid['class_weight'])}
+              'class_weight': trial.suggest_categorical('class_weight', param_grid['class_weight']),
+              'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
@@ -472,12 +505,17 @@ def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
         fig = optuna.visualization.plot_parallel_coordinate(study)
         fig.write_image(full_path+'/training/SVM_ParamOptimization_'+str(i)+'.png')
 
+    print('Best trial:')
     best_trial = study.best_trial
+    print('  Value: ', best_trial.value)
+    print('  Params: ')
+    for key, value in best_trial.params.items():
+        print('    {}: {}'.format(key, value))
 
     # Train model using 'best' hyperparameters
     est = SVC()
-    clf = clone(est).set_params(**best_trial.params)
-    setattr(clf, 'random_state', randSeed)
+    clf = est.set_params(**best_trial.params)
+    print(clf)
 
     model = clf.fit(x_train, y_train)
 
@@ -486,7 +524,6 @@ def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -507,15 +544,15 @@ def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#Gradient Boosting Classifier ###############################
 def objective_GB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
-    params = {'loss': trial.suggest_categorical('loss', param_grid['loss']),
-              'learning_rate': trial.suggest_loguniform('learning_rate', param_grid['learning_rate'][0],param_grid['learning_rate'][1]),
-              'min_samples_leaf': trial.suggest_int('min_samples_leaf', param_grid['min_samples_leaf'][0],param_grid['min_samples_leaf'][1]),
-              'max_depth': trial.suggest_int('max_depth', param_grid['max_depth'][0], param_grid['max_depth'][1]),
-              'max_leaf_nodes': param_grid['max_leaf_nodes'][0],
-              'tol': param_grid['tol'][0],
-              'n_iter_no_change': trial.suggest_int('n_iter_no_change', param_grid['n_iter_no_change'][0],param_grid['n_iter_no_change'][1]),
-              'validation_fraction': trial.suggest_discrete_uniform('validation_fraction',param_grid['validation_fraction'][0],param_grid['validation_fraction'][1],param_grid['validation_fraction'][2])}
+    params = {'n_estimators' : trial.suggest_int('n_estimators',param_grid['n_estimators'][0], param_grid['n_estimators'][1]),
+                'loss': trial.suggest_categorical('loss', param_grid['loss']),
+                'learning_rate': trial.suggest_loguniform('learning_rate', param_grid['learning_rate'][0],param_grid['learning_rate'][1]),
+                'min_samples_leaf': trial.suggest_int('min_samples_leaf', param_grid['min_samples_leaf'][0],param_grid['min_samples_leaf'][1]),
+                'min_samples_split': trial.suggest_int('min_samples_split', param_grid['min_samples_split'][0],param_grid['min_samples_split'][1]),
+                'max_depth': trial.suggest_int('max_depth', param_grid['max_depth'][0], param_grid['max_depth'][1]),
+                'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_GB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
@@ -530,12 +567,17 @@ def run_GB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
         fig = optuna.visualization.plot_parallel_coordinate(study)
         fig.write_image(full_path+'/training/GB_ParamOptimization_'+str(i)+'.png')
 
+    print('Best trial:')
     best_trial = study.best_trial
+    print('  Value: ', best_trial.value)
+    print('  Params: ')
+    for key, value in best_trial.params.items():
+        print('    {}: {}'.format(key, value))
 
     # Train model using 'best' hyperparameters
     est = GradientBoostingClassifier()
-    clf = clone(est).set_params(**best_trial.params)
-    setattr(clf, 'random_state', randSeed)
+    clf = est.set_params(**best_trial.params)
+    print(clf)
 
     model = clf.fit(x_train, y_train)
 
@@ -544,7 +586,6 @@ def run_GB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -565,6 +606,7 @@ def run_GB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi
 
+#K-Neighbors Classifier ###############################
 def objective_KN(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {
         'n_neighbors': trial.suggest_int('n_neighbors', param_grid['n_neighbors'][0], param_grid['n_neighbors'][1]),
@@ -585,11 +627,17 @@ def run_KN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
         fig = optuna.visualization.plot_parallel_coordinate(study)
         fig.write_image(full_path+'/training/KN_ParamOptimization_'+str(i)+'.png')
 
+    print('Best trial:')
     best_trial = study.best_trial
+    print('  Value: ', best_trial.value)
+    print('  Params: ')
+    for key, value in best_trial.params.items():
+        print('    {}: {}'.format(key, value))
 
     # Train model using 'best' hyperparameters
     est = KNeighborsClassifier()
-    clf = clone(est).set_params(**best_trial.params)
+    clf = est.set_params(**best_trial.params)
+    print(clf)
 
     model = clf.fit(x_train, y_train)
 
@@ -598,7 +646,6 @@ def run_KN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -619,7 +666,7 @@ def run_KN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,
 
     return metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi
 
-
+#Artificial Neural Networks ###############################
 def objective_ANN(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'activation': trial.suggest_categorical('activation', param_grid['activation']),
               'learning_rate': trial.suggest_categorical('learning_rate', param_grid['learning_rate']),
@@ -627,7 +674,9 @@ def objective_ANN(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
               'solver': trial.suggest_categorical('solver', param_grid['solver']),
               'batch_size': trial.suggest_categorical('batch_size', param_grid['batch_size']),
               'alpha': trial.suggest_loguniform('alpha', param_grid['alpha'][0], param_grid['alpha'][1]),
-              'max_iter': trial.suggest_categorical('max_iter', param_grid['max_iter'])}
+              'max_iter': trial.suggest_categorical('max_iter', param_grid['max_iter']),
+              'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
+
     n_layers = trial.suggest_int('n_layers', param_grid['n_layers'][0], param_grid['n_layers'][1])
     layers = []
     for i in range(n_layers):
@@ -649,7 +698,12 @@ def run_ANN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
         fig = optuna.visualization.plot_parallel_coordinate(study)
         fig.write_image(full_path+'/training/ANN_ParamOptimization_'+str(i)+'.png')
 
+    print('Best trial:')
     best_trial = study.best_trial
+    print('  Value: ', best_trial.value)
+    print('  Params: ')
+    for key, value in best_trial.params.items():
+        print('    {}: {}'.format(key, value))
 
     # Handle special parameter requirement for ANN
     layers = []
@@ -663,8 +717,8 @@ def run_ANN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Train model using 'best' hyperparameters
     est = MLPClassifier()
-    clf = clone(est).set_params(**best_trial.params)
-    setattr(clf, 'random_state', randSeed)
+    clf = est.set_params(**best_trial.params)
+    print(clf)
 
     model = clf.fit(x_train, y_train)
 
@@ -673,7 +727,6 @@ def run_ANN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -694,10 +747,12 @@ def run_ANN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#eLCS (learning Classifier System) ###############################
 def objective_eLCS(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'learning_iterations': trial.suggest_categorical('learning_iterations', param_grid['learning_iterations']),
         'N': trial.suggest_categorical('N', param_grid['N']),
-        'nu': trial.suggest_categorical('nu', param_grid['nu'])}
+        'nu': trial.suggest_categorical('nu', param_grid['nu']),
+        'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_eLCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
@@ -718,16 +773,22 @@ def run_eLCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trial
             fig = optuna.visualization.plot_parallel_coordinate(study)
             fig.write_image(full_path+'/training/eLCS_ParamOptimization_'+str(i)+'.png')
 
+        print('Best trial:')
         best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
 
         # Train model using 'best' hyperparameters
-        clf = clone(est).set_params(**best_trial.params)
+        clf = est.set_params(**best_trial.params)
     else:
         params = copy.deepcopy(param_grid)
         for key, value in param_grid.items():
             params[key] = value[0]
-        clf = clone(est).set_params(**params)
-    setattr(clf, 'random_state', randSeed)
+        clf = est.set_params(**params)
+
+    print(clf)
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -735,7 +796,6 @@ def run_eLCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trial
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -756,10 +816,12 @@ def run_eLCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trial
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#XCS (Learning classifier system) ###############################
 def objective_XCS(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'learning_iterations': trial.suggest_categorical('learning_iterations', param_grid['learning_iterations']),
         'N': trial.suggest_categorical('N', param_grid['N']),
-        'nu': trial.suggest_categorical('nu', param_grid['nu'])}
+        'nu': trial.suggest_categorical('nu', param_grid['nu']),
+        'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_XCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
@@ -779,16 +841,22 @@ def run_XCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
             fig = optuna.visualization.plot_parallel_coordinate(study)
             fig.write_image(full_path+'/training/XCS_ParamOptimization_'+str(i)+'.png')
 
+        print('Best trial:')
         best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
 
         # Train model using 'best' hyperparameters
-        clf = clone(est).set_params(**best_trial.params)
+        clf = est.set_params(**best_trial.params)
     else:
         params = copy.deepcopy(param_grid)
         for key, value in param_grid.items():
             params[key] = value[0]
-        clf = clone(est).set_params(**params)
-    setattr(clf, 'random_state', randSeed)
+        clf = est.set_params(**params)
+
+    print(clf)
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -796,7 +864,6 @@ def run_XCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -817,19 +884,61 @@ def run_XCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+#ExSTraCS (learning classifier system) ###############################
 def objective_ExSTraCS(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'learning_iterations': trial.suggest_categorical('learning_iterations', param_grid['learning_iterations']),
-        'N': trial.suggest_categorical('N', param_grid['N']),
-        'nu': trial.suggest_categorical('nu', param_grid['nu'])}
+              'N': trial.suggest_categorical('N', param_grid['N']), 'nu': trial.suggest_categorical('nu', param_grid['nu']),
+              'random_state' : trial.suggest_categorical('random_state',param_grid['random_state']),
+              'expert_knowledge':param_grid['expert_knowledge']}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
-def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
+def get_FI_subset_ExSTraCS(full_path,i,instance_label,class_label,filter_poor_features):
+    """ For ExSTraCS, gets the MultiSURF FI scores for the feature subset being analyzed here in modeling"""
+    algorithmlabel = "multisurf"
+    scores = [] #to be filled in, in filted dataset order.
+    data_name = full_path.split('/')[-1]
+
+    if os.path.exists(full_path+ "/"+algorithmlabel+"/pickledForPhase4/"): #If MultiSURF was done previously
+        if filter_poor_features == 'True':
+            #Load current data ordered_feature_names
+            header = pd.read_csv(full_path+'/CVDatasets/'+data_name+'_CV_'+str(i)+'_Test.csv').columns.values.tolist()
+            if instance_label != 'None':
+                header.remove(instance_label)
+            header.remove(class_label)
+
+            #Load orignal dataset multisurf scores
+            scoreInfo = full_path+ "/"+algorithmlabel+"/pickledForPhase4/"+str(i)
+            file = open(scoreInfo, 'rb')
+            rawData = pickle.load(file)
+            file.close()
+            scoreDict = rawData[1]
+
+            #Generate filtered multisurf score list with same order as working datasets
+            for each in header:
+                scores.append(scoreDict[each])
+        else:
+            #Load orignal dataset multisurf scores
+            scoreInfo = full_path+ "/"+algorithmlabel+"/pickledForPhase4/"+str(i)
+            file = open(scoreInfo, 'rb')
+            rawData = pickle.load(file)
+            file.close()
+            scores = rawData[0]
+    else:
+        scores = []
+    return scores
+
+def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path,filter_poor_features,instance_label,class_label):
+    #Grab feature importance weights from multiSURF, used by ExSTraCS
+    scores = get_FI_subset_ExSTraCS(full_path,i,instance_label,class_label,filter_poor_features)
+    param_grid['expert_knowledge'] = scores
+
     isSingle = True
     for key, value in param_grid.items():
-        if len(value) > 1:
+        if len(value) > 1 and key != 'expert_knowledge':
             isSingle = False
 
     est = ExSTraCS()
+
     if not isSingle:
         # Run Hyperparameter sweep
         sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
@@ -841,32 +950,25 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
             fig = optuna.visualization.plot_parallel_coordinate(study)
             fig.write_image(full_path+'/training/ExSTraCS_ParamOptimization_'+str(i)+'.png')
 
+        print('Best trial:')
         best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
 
         # Train model using 'best' hyperparameters
-        clf = clone(est).set_params(**best_trial.params)
+        clf = est.set_params(**best_trial.params)
     else:
         params = copy.deepcopy(param_grid)
         for key, value in param_grid.items():
-            params[key] = value[0]
-        clf = clone(est).set_params(**params)
-    setattr(clf, 'rule_compaction', None)
-    setattr(clf, 'random_state', randSeed)
+            if key == 'expert_knowledge':
+                params[key] = value
+            else:
+                params[key] = value[0]
+        clf = est.set_params(**params)
 
-    # SET EXPERT Knowledge
-    rbSample = np.random.choice(x_train.shape[0], min(2000, x_train.shape[0]), replace=False)
-    newL = []
-    for r in rbSample:
-        newL.append(x_train[r])
-    newL = np.array(newL)
-    dataFeaturesR = np.delete(newL, -1, axis=1)
-    dataPhenotypesR = newL[:, -1]
-
-    relieff = ReliefF()
-    relieff.fit(dataFeaturesR, dataPhenotypesR)
-    scores = relieff.feature_importances_
-    setattr(clf, 'expert_knowledge', scores)
-
+    print(clf)
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -874,7 +976,6 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
 
     # Prediction evaluation
     y_pred = clf.predict(x_test)
-
     metricList = classEval(y_test, y_pred)
 
     # Determine probabilities of class predictions for each test instance (this will be used much later in calculating an ROC curve)
@@ -944,64 +1045,127 @@ def computeImportances(clf, x_train, y_train, x_test, y_test, bac):
 
     return featureImpList
 
-def hyperparameters():
+def hyperparameters(random_state):
     param_grid = {}
     #######EDITABLE CODE################################################################################################
     # Logistic Regression
+    """ Smaller datasets
     param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
                      'solver': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
-                     'class_weight': [None, 'balanced'],'max_iter': [10, 1000],'n_jobs': [-1]}
+                     'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
+                     'random_state':[random_state]}
+    """
+    """ Large sample size datasets
+    param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
+                     'solver': ['sag', 'saga'],
+                     'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
+                     'random_state':[random_state]}
+    """
+
+    param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
+                     'solver': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
+                     'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
+                     'random_state':[random_state]}
 
     # Decision Tree
+    """ Any datasets
     param_grid_DT = {'criterion': ['gini', 'entropy'],'splitter': ['best', 'random'],'max_depth': [1, 30],
                      'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
-                     'class_weight': [None, 'balanced']}
+                     'class_weight': [None, 'balanced'],
+                     'random_state':[random_state]}
+    """
+    param_grid_DT = {'criterion': ['gini', 'entropy'],'splitter': ['best', 'random'],'max_depth': [1, 30],
+                     'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
+                     'class_weight': [None, 'balanced'],
+                     'random_state':[random_state]}
 
     # Random Forest
+    """ Any datasets
     param_grid_RF = {'n_estimators': [10, 1000],'criterion': ['gini', 'entropy'],'max_depth': [1, 30],
                      'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
-                     'bootstrap': [True],'oob_score': [False, True],'n_jobs': [-1],'class_weight': [None, 'balanced']}
+                     'bootstrap': [True],'oob_score': [False, True],'class_weight': [None, 'balanced'],
+                     'random_state':[random_state]}
+    """
+    param_grid_RF = {'n_estimators': [10, 1000],'criterion': ['gini', 'entropy'],'max_depth': [1, 30],
+                     'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
+                     'bootstrap': [True],'oob_score': [False, True],'class_weight': [None, 'balanced'],
+                     'random_state':[random_state]}
 
     # XG Boost - note: class weight balance is included as option internally
+    """ Any datasets
     param_grid_XGB = {'booster': ['gbtree'],'objective': ['binary:logistic'],'verbosity': [0],'reg_lambda': [1e-8, 1.0],
                       'alpha': [1e-8, 1.0],'eta': [1e-8, 1.0],'gamma': [1e-8, 1.0],'max_depth': [1, 30],
                       'grow_policy': ['depthwise', 'lossguide'],'n_estimators': [10, 1000],'min_samples_split': [2, 50],
                       'min_samples_leaf': [1, 50],'subsample': [0.5, 1.0],'min_child_weight': [0.1, 10],
-                      'colsample_bytree': [0.1, 1.0]}
+                      'colsample_bytree': [0.1, 1.0],'nthread':[1],'random_state':[random_state]}
+    """
+    param_grid_XGB = {'booster': ['gbtree'],'objective': ['binary:logistic'],'verbosity': [0],'reg_lambda': [1e-8, 1.0],
+                      'alpha': [1e-8, 1.0],'eta': [1e-8, 1.0],'gamma': [1e-8, 1.0],'max_depth': [1, 30],
+                      'grow_policy': ['depthwise', 'lossguide'],'n_estimators': [10, 1000],'min_samples_split': [2, 50],
+                      'min_samples_leaf': [1, 50],'subsample': [0.5, 1.0],'min_child_weight': [0.1, 10],
+                      'colsample_bytree': [0.1, 1.0],'nthread':[1],'random_state':[random_state]}
 
     # LG Boost - note: class weight balance is included as option internally
+    """ Any datasets
     param_grid_LGB = {'objective': ['binary'],'metric': ['binary_logloss'],'verbosity': [-1],'boosting_type': ['gbdt'],
                       'num_leaves': [2, 256],'max_depth': [1, 30],'lambda_l1': [1e-8, 10.0],'lambda_l2': [1e-8, 10.0],
                       'feature_fraction': [0.4, 1.0],'bagging_fraction': [0.4, 1.0],'bagging_freq': [1, 7],
-                      'min_child_samples': [5, 100],'n_estimators': [10, 1000]}
+                      'min_child_samples': [5, 100],'n_estimators': [10, 1000],'num_threads':[1],'random_state':[random_state]}
+    """
+    param_grid_LGB = {'objective': ['binary'],'metric': ['binary_logloss'],'verbosity': [-1],'boosting_type': ['gbdt'],
+                      'num_leaves': [2, 256],'max_depth': [1, 30],'lambda_l1': [1e-8, 10.0],'lambda_l2': [1e-8, 10.0],
+                      'feature_fraction': [0.4, 1.0],'bagging_fraction': [0.4, 1.0],'bagging_freq': [1, 7],
+                      'min_child_samples': [5, 100],'n_estimators': [10, 1000],'num_threads':[1],'random_state':[random_state]}
 
-    # SVM
+    # SVM - not approppriate for large instance spaces
+    """ Smaller datasets
     param_grid_SVM = {'kernel': ['linear', 'poly', 'rbf'],'C': [0.1, 1000],'gamma': ['scale'],'degree': [1, 6],
-                      'probability': [True],'class_weight': [None, 'balanced']}
+                      'probability': [True],'class_weight': [None, 'balanced'],'random_state':[random_state]}
+    """
+    param_grid_SVM = {'kernel': ['linear', 'poly', 'rbf'],'C': [0.1, 1000],'gamma': ['scale'],'degree': [1, 6],
+                      'probability': [True],'class_weight': [None, 'balanced'],'random_state':[random_state]}
 
     # ANN
+    """ Any datasets
     param_grid_ANN = {'n_layers': [1, 3],'layer_size': [1, 100],'activation': ['identity', 'logistic', 'tanh', 'relu'],
                       'learning_rate': ['constant', 'invscaling', 'adaptive'],'momentum': [.1, .9],
-                      'solver': ['sgd', 'adam'],'batch_size': ['auto'],'alpha': [0.0001, 0.05],'max_iter': [200]}
+                      'solver': ['sgd', 'adam'],'batch_size': ['auto'],'alpha': [0.0001, 0.05],'max_iter': [200],'random_state':[random_state]}
+    """
+    param_grid_ANN = {'n_layers': [1, 3],'layer_size': [1, 100],'activation': ['identity', 'logistic', 'tanh', 'relu'],
+                      'learning_rate': ['constant', 'invscaling', 'adaptive'],'momentum': [.1, .9],
+                      'solver': ['sgd', 'adam'],'batch_size': ['auto'],'alpha': [0.0001, 0.05],'max_iter': [200],'random_state':[random_state]}
 
     # ExSTraCS
-    # param_grid_ExSTraCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
-    param_grid_ExSTraCS = {'learning_iterations': [5000,10000],'N': [1000],'nu': [1,10]}
+    """ Smaller datasets
+    param_grid_ExSTraCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
+    """
+    param_grid_ExSTraCS = {'learning_iterations': [20000],'N': [1000],'nu': [10],'random_state':[random_state],'rule_compaction':[None],'expert_knowledge':[None]}
 
     # eLCS
-    # param_grid_eLCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
-    param_grid_eLCS = {'learning_iterations': [5000,10000],'N': [1000],'nu': [1,10]}
+    """ Smaller datasets
+    param_grid_eLCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
+    """
+    param_grid_eLCS = {'learning_iterations': [200000],'N': [2000],'nu': [1],'random_state':[random_state]}
 
     # XCS
-    # param_grid_XCS = {'learning_iterations':[20000,50000,100000,200000],'N':[500,1000,2000],'nu':[1,5,10]}
-    param_grid_XCS = {'learning_iterations': [5000,10000],'N': [1000],'nu': [1,10]}
+    """ Smaller datasets
+    param_grid_XCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
+    """
+    param_grid_XCS = {'learning_iterations': [200000],'N': [2000],'nu': [1],'random_state':[random_state]}
 
     # GB
-    param_grid_GB = {'loss': ['deviance', 'exponential'], 'learning_rate': [1e-2, 1], 'min_samples_leaf': [1, 200],
-                     'max_depth': [1, 10], 'max_leaf_nodes': [None], 'tol': [1e-7], 'n_iter_no_change': [1, 20],
-                     'validation_fraction': [0.01, 0.31, 0.01]}
+    """ Smaller datasets
+    param_grid_GB = {'n_estimators': [10, 1000],'loss': ['deviance', 'exponential'], 'learning_rate': [.0001, 0.3], 'min_samples_leaf': [1, 50],
+                     'min_samples_split': [2, 50], 'max_depth': [1, 30],'random_state':[random_state]}
+    """
+    param_grid_GB = {'n_estimators': [10, 1000],'loss': ['deviance', 'exponential'], 'learning_rate': [.0001, 0.3], 'min_samples_leaf': [1, 50],
+                     'min_samples_split': [2, 50], 'max_depth': [1, 30],'random_state':[random_state]}
 
-    # KN
+    # KN - not appropriate for large instance spaces
+    """ Smaller datasets
+    param_grid_KN = {'n_neighbors': [1, 100], 'weights': ['uniform', 'distance'], 'p': [1, 5],
+                     'metric': ['euclidean', 'minkowski']}
+    """
     param_grid_KN = {'n_neighbors': [1, 100], 'weights': ['uniform', 'distance'], 'p': [1, 5],
                      'metric': ['euclidean', 'minkowski']}
 
@@ -1022,4 +1186,4 @@ def hyperparameters():
     return param_grid
 
 if __name__ == '__main__':
-    job(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],int(sys.argv[5]),int(sys.argv[6]),int(sys.argv[7]),sys.argv[8],sys.argv[9],sys.argv[10],int(sys.argv[11]),int(sys.argv[12]))
+    job(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],int(sys.argv[5]),int(sys.argv[6]),int(sys.argv[7]),sys.argv[8],sys.argv[9],sys.argv[10],int(sys.argv[11]),int(sys.argv[12]),sys.argv[13])

@@ -9,127 +9,106 @@ import os
 import csv
 import sys
 
-def job(full_path,do_mutual_info,do_multiSURF,max_features_to_keep,filter_poor_features,top_results,graph_scores,class_label,instance_label):
+def job(full_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv):
     job_start_time = time.time()
-
+    dataset_name = full_path.split('/')[-1]
     selected_feature_lists = {}
     meta_feature_ranks = {}
-    cvPartitions = int(len(glob.glob(full_path+'/CVDatasets/*.csv'))/2)
     algorithms = []
 
-    #Graph Average FI scores for MI
-    if do_mutual_info == 'TRUE' or do_mutual_info == 'True':
+    filter_poor_features = filter_poor_features == 'True'
+
+    #Mutual Information
+    if do_mutual_info == 'True':
         algorithms.append('Mutual Information')
-        counter = 0
-        cv_keep_list = []
-        feature_name_ranks = []
-        for scoreInfo in glob.glob(full_path+"/MutualInformation/pickledForPhase3/*"):
-            file = open(scoreInfo, 'rb')
-            rawData = pickle.load(file)
-            file.close()
+        selected_feature_lists,meta_feature_ranks = reportAveFS("Mutual Information","mutualinformation",cv_partitions,top_results,full_path,selected_feature_lists,meta_feature_ranks,export_scores)
 
-            scoreDict = rawData[1]
-            score_sorted_features = rawData[2]
-            feature_name_ranks.append(score_sorted_features)
-
-            if counter == 0:
-                scoreSum = copy.deepcopy(scoreDict)
-            else:
-                for each in rawData[1]:
-                    scoreSum[each] += scoreDict[each]
-            counter += 1
-
-            keep_list = []
-            for each in scoreDict:
-                if scoreDict[each] > 0:
-                    keep_list.append(each)
-            cv_keep_list.append(keep_list)
-        selected_feature_lists['Mutual Information'] = cv_keep_list
-        meta_feature_ranks['Mutual Information'] = feature_name_ranks
-
-        if graph_scores == 'True':
-            reportTopFS(scoreSum,"Mutual Information",cvPartitions,top_results,full_path)
-
-    # Graph Average FI scores for MS
-    if do_multiSURF == 'TRUE' or do_multiSURF == 'True':
+    #MultiSURF
+    if do_multisurf == 'True':
         algorithms.append('MultiSURF')
-        counter = 0
-        cv_keep_list = []
-        feature_name_ranks = []
-        for scoreInfo in glob.glob(full_path + "/MultiSURF/pickledForPhase3/*"):
-            file = open(scoreInfo, 'rb')
-            rawData = pickle.load(file)
-            file.close()
+        selected_feature_lists,meta_feature_ranks = reportAveFS("MultiSURF","multisurf",cv_partitions,top_results,full_path,selected_feature_lists,meta_feature_ranks,export_scores)
 
-            scoreDict = rawData[1]
-            score_sorted_features = rawData[2]
-            feature_name_ranks.append(score_sorted_features)
+    if len(algorithms) != 0:
+        #Feature Selection
+        if filter_poor_features:
+            #Identify top feature subset
+            cv_selected_list = selectFeatures(algorithms,cv_partitions,selected_feature_lists,max_features_to_keep,meta_feature_ranks)
 
-            if counter == 0:
-                scoreSum = copy.deepcopy(scoreDict)
-            else:
-                for each in rawData[1]:
-                    scoreSum[each] += scoreDict[each]
-            counter += 1
-
-            keep_list = []
-            for each in scoreDict:
-                if scoreDict[each] > 0:
-                    keep_list.append(each)
-            cv_keep_list.append(keep_list)
-        selected_feature_lists['MultiSURF'] = cv_keep_list
-        meta_feature_ranks['MultiSURF'] = feature_name_ranks
-
-        if graph_scores == 'True':
-            reportTopFS(scoreSum, "MultiSURF", cvPartitions, top_results, full_path)
-
-    #Filter Scores and replace old CV files
-    cv_selected_list = selectFeatures(algorithms,cvPartitions,selected_feature_lists,max_features_to_keep,meta_feature_ranks)
-    dataset_name = full_path.split('/')[-1]
-    if filter_poor_features:
-        genFilteredDatasets(cv_selected_list,class_label,instance_label,cvPartitions,full_path+'/CVDatasets',dataset_name)
+            #Generate new datasets with selected feature subsets
+            genFilteredDatasets(cv_selected_list,class_label,instance_label,cv_partitions,full_path+'/CVDatasets',dataset_name,overwrite_cv)
 
     # Save Runtime
-    runtime_file = open(full_path + '/runtime/runtime_FeatureSelection.txt', 'w')
+    runtime_file = open(full_path + '/runtime/runtime_featureselection.txt', 'w')
     runtime_file.write(str(time.time() - job_start_time))
     runtime_file.close()
 
     # Print completion
-    print(dataset_name + " phase 3 complete")
+    print(dataset_name + " phase 4 complete")
     experiment_path = '/'.join(full_path.split('/')[:-1])
-    job_file = open(experiment_path + '/jobsCompleted/job_featureSelection_' + dataset_name + '.txt', 'w')
+    job_file = open(experiment_path + '/jobsCompleted/job_featureselection_' + dataset_name + '.txt', 'w')
     job_file.write('complete')
     job_file.close()
 
-def reportTopFS(scoreSum, algorithm, cv_partitions, topResults,full_path):
-    # Make the sum of scores an average
-    for v in scoreSum:
-        scoreSum[v] = scoreSum[v] / float(cv_partitions)
+def reportAveFS(algorithm,algorithmlabel,cv_partitions,top_results,full_path,selected_feature_lists,meta_feature_ranks,export_scores):
+    #Calculate score sums
+    counter = 0
+    cv_keep_list = []
+    feature_name_ranks = []
+    for i in range(0,cv_partitions):
+        scoreInfo = full_path+"/"+algorithmlabel+"/pickledForPhase4/"+str(i)
+        file = open(scoreInfo, 'rb')
+        rawData = pickle.load(file)
+        file.close()
 
-    # Sort averages (decreasing order and print top 'n' and plot top 'n'
-    f_names = []
-    f_scores = []
-    for each in scoreSum:
-        f_names.append(each)
-        f_scores.append(scoreSum[each])
+        scoreDict = rawData[1]
+        score_sorted_features = rawData[2]
+        feature_name_ranks.append(score_sorted_features)
 
-    names_scores = {'Names': f_names, 'Scores': f_scores}
-    ns = pd.DataFrame(names_scores)
-    ns = ns.sort_values(by='Scores', ascending=False)
+        if counter == 0:
+            scoreSum = copy.deepcopy(scoreDict)
+        else:
+            for each in rawData[1]:
+                scoreSum[each] += scoreDict[each]
+        counter += 1
 
-    # Select top 'n' to report and plot
-    ns = ns.head(topResults)
+        keep_list = []
+        for each in scoreDict:
+            if scoreDict[each] > 0:
+                keep_list.append(each)
+        cv_keep_list.append(keep_list)
+    selected_feature_lists[algorithm] = cv_keep_list
+    meta_feature_ranks[algorithm] = feature_name_ranks
 
-    # Visualize sorted feature scores
-    ns['Scores'].plot(kind='barh', figsize=(6, 12))
-    plt.ylabel('Features')
-    plt.xlabel(str(algorithm) + ' Score')
-    plt.yticks(np.arange(len(ns['Names'])), ns['Names'])
-    plt.title('Sorted ' + str(algorithm) + ' Scores')
-    if algorithm == 'Mutual Information':
-        algorithm = "MutualInformation"
-    plt.savefig((full_path+"/"+algorithm+"/AverageScores.png"), bbox_inches="tight")
-    plt.close('all')
+    #Generate barplot of average scores
+    if export_scores == 'True':
+        # Make the sum of scores an average
+        for v in scoreSum:
+            scoreSum[v] = scoreSum[v] / float(cv_partitions)
+
+        # Sort averages (decreasing order and print top 'n' and plot top 'n'
+        f_names = []
+        f_scores = []
+        for each in scoreSum:
+            f_names.append(each)
+            f_scores.append(scoreSum[each])
+
+        names_scores = {'Names': f_names, 'Scores': f_scores}
+        ns = pd.DataFrame(names_scores)
+        ns = ns.sort_values(by='Scores', ascending=False)
+
+        # Select top 'n' to report and plot
+        ns = ns.head(top_results)
+
+        # Visualize sorted feature scores
+        ns['Scores'].plot(kind='barh', figsize=(6, 12))
+        plt.ylabel('Features')
+        plt.xlabel(str(algorithm) + ' Score')
+        plt.yticks(np.arange(len(ns['Names'])), ns['Names'])
+        plt.title('Sorted ' + str(algorithm) + ' Scores')
+        plt.savefig((full_path+"/"+algorithmlabel+"/TopAverageScores.png"), bbox_inches="tight")
+        plt.close('all')
+
+    return selected_feature_lists,meta_feature_ranks
 
 def selectFeatures(algorithms, cv_partitions, selectedFeatureLists, maxFeaturesToKeep, metaFeatureRanks):
     cv_Selected_List = []  # list of selected features for each cv
@@ -174,7 +153,7 @@ def selectFeatures(algorithms, cv_partitions, selectedFeatureLists, maxFeaturesT
 
     return cv_Selected_List
 
-def genFilteredDatasets(cv_Selected_List, outcomeLabel, instLabel,cv_partitions,path_to_csv,dataset_name):
+def genFilteredDatasets(cv_selected_list,class_label,instance_label,cv_partitions,path_to_csv,dataset_name,overwrite_cv):
     #create lists to hold training and testing set dataframes.
     trainList = []
     testList = []
@@ -189,17 +168,22 @@ def genFilteredDatasets(cv_Selected_List, outcomeLabel, instLabel,cv_partitions,
         testList.append(testSet)
 
         #Training datasets
-        labelList = [outcomeLabel]
-        if instLabel != 'None':
-            labelList.append(instLabel)
-        labelList = labelList + cv_Selected_List[i]
+        labelList = [class_label]
+        if instance_label != 'None':
+            labelList.append(instance_label)
+        labelList = labelList + cv_selected_list[i]
 
         td_train = trainList[i][labelList]
         td_test = testList[i][labelList]
 
-        #Remove old CV files
-        os.remove(path_to_csv+'/'+dataset_name+'_CV_' + str(i) +"_Train.csv")
-        os.remove(path_to_csv+'/'+dataset_name+'_CV_' + str(i) + "_Test.csv")
+        if overwrite_cv == 'True':
+            #Remove old CV files
+            os.remove(path_to_csv+'/'+dataset_name+'_CV_' + str(i) +"_Train.csv")
+            os.remove(path_to_csv+'/'+dataset_name+'_CV_' + str(i) + "_Test.csv")
+        else:
+            #Rename old CV files
+            os.rename(path_to_csv+'/'+dataset_name+'_CV_' + str(i) +"_Train.csv",path_to_csv+'/'+dataset_name+'_CVPre_' + str(i) +"_Train.csv")
+            os.rename(path_to_csv+'/'+dataset_name+'_CV_' + str(i) + "_Test.csv",path_to_csv+'/'+dataset_name+'_CVPre_' + str(i) +"_Test.csv")
 
         #Write new CV files
         with open(path_to_csv+'/'+dataset_name+'_CV_' + str(i) +"_Train.csv",mode='w') as file:
@@ -217,4 +201,4 @@ def genFilteredDatasets(cv_Selected_List, outcomeLabel, instLabel,cv_partitions,
         file.close()
 
 if __name__ == '__main__':
-    job(sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), sys.argv[5], int(sys.argv[6]), int(sys.argv[7]),sys.argv[8], sys.argv[9])
+    job(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5], int(sys.argv[6]),sys.argv[7], sys.argv[8],sys.argv[9],int(sys.argv[10]),sys.argv[11])
