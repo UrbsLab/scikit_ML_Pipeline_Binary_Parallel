@@ -10,7 +10,7 @@ import pickle
 import os
 
 '''Phase 3 of Machine Learning Analysis Pipeline:'''
-def job(cv_train_path,experiment_path,random_state,class_label,instance_label,categorical_cutoff,instance_subset,algorithm):
+def job(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,algorithm):
     job_start_time = time.time()
     random.seed(random_state)
     np.random.seed(random_state)
@@ -27,6 +27,7 @@ def job(cv_train_path,experiment_path,random_state,class_label,instance_label,ca
     if instance_label != 'None':
         header.remove(instance_label)
     cvCount = cv_train_path.split('/')[-1].split("_")[-2]
+
 
     #Mutual Information
     if algorithm == 'mi':
@@ -50,14 +51,13 @@ def job(cv_train_path,experiment_path,random_state,class_label,instance_label,ca
         #Run MultiSURF
         outname = "multisurf"
         outpath = experiment_path + '/' + dataset_name + "/"+outname+"/scores_cv_" + str(cvCount) + '.csv'
-        clf = MultiSURF().fit(dataFeatures, dataOutcome)
+        clf = MultiSURF().fit(dataFeatures, dataPhenotypes)
         scores = clf.feature_importances_
-
     else:
         raise Exception("Feature importance algorithm not found")
 
     #Save sorted feature importance scores:
-    scoreDict, score_sorted_features = sort_save_fi_scores(scores, header, outpath)
+    scoreDict, score_sorted_features = sort_save_fi_scores(scores, header, outpath, outname)
 
     #Save CV MI Scores to pickled file
     if not os.path.exists(experiment_path + '/' + dataset_name + "/"+outname+"/pickledForPhase4"):
@@ -78,7 +78,8 @@ def job(cv_train_path,experiment_path,random_state,class_label,instance_label,ca
     job_file.write('complete')
     job_file.close()
 
-def sort_save_fi_scores(scores, ordered_feature_names, filename):
+def sort_save_fi_scores(scores, ordered_feature_names, filename, algo_name):
+
     # Put list of scores in dictionary
     scoreDict = {}
     i = 0
@@ -92,7 +93,7 @@ def sort_save_fi_scores(scores, ordered_feature_names, filename):
     # Save scores to 'formatted' file
     with open(filename,mode='w') as file:
         writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(["Sorted Mutual Information Scores"])
+        writer.writerow(["Sorted "+algo_name+" Scores"])
         for k in score_sorted_features:
             writer.writerow([k,scoreDict[k]])
     file.close()
@@ -101,4 +102,4 @@ def sort_save_fi_scores(scores, ordered_feature_names, filename):
 
 ########################################################################################################################
 if __name__ == '__main__':
-    job(sys.argv[1],sys.argv[2],int(sys.argv[3]),sys.argv[4],sys.argv[5],int(sys.argv[6]),int(sys.argv[7]),sys.argv[8])
+    job(sys.argv[1],sys.argv[2],int(sys.argv[3]),sys.argv[4],sys.argv[5],int(sys.argv[6]),sys.argv[7])

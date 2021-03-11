@@ -11,6 +11,9 @@ import csv
 '''Phase 2 of Machine Learning Analysis Pipeline:
 Sample Run Command:
 python DataPreprocessingMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
+
+Local Command:
+python DataPreprocessingMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False
 '''
 
 def main(argv):
@@ -22,7 +25,7 @@ def main(argv):
     #Defaults available
     parser.add_argument('--scale-data',dest='scale_data',type=str,help='perform data scaling?',default="True")
     parser.add_argument('--impute-data', dest='impute_data',type=str,help='perform missing value data imputation? (required for most ML algorithms if missing data is present)',default="True")
-    parser.add_argument('--overwrite-cv', dest='overwrite_cv',type=str,help='overwrites earlier cv datasets with new scaled/imputed ones',default="True")
+    parser.add_argument('--overwrite-cv', dest='overwrite_cv',type=str,help='overwrites earlier cv datasets with new scaled/imputed ones',default="False")
     parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
     parser.add_argument('--res-mem', dest='reserved_memory', type=int, help='reserved memory for the job (in Gigabytes)',default=4)
     parser.add_argument('--max-mem', dest='maximum_memory', type=int, help='maximum memory before the job is automatically terminated',default=15)
@@ -34,7 +37,7 @@ def main(argv):
     scale_data = options.scale_data
     impute_data = options.impute_data
     overwrite_cv = options.overwrite_cv
-    run_parallel = options.run_parallel
+    run_parallel = options.run_parallel == 'True'
     reserved_memory = options.reserved_memory
     maximum_memory = options.maximum_memory
     do_check = options.do_check
@@ -68,7 +71,7 @@ def main(argv):
                 if run_parallel:
                     submitClusterJob(cv_train_path,cv_test_path,output_path+'/'+experiment_name,scale_data,impute_data,overwrite_cv,categorical_cutoff,class_label,instance_label,random_state,reserved_memory,maximum_memory)
                 else:
-                    submitLocalJob(cv_train_name,cv_test_name,output_path+'/'+experiment_name,scale_data,impute_data,overwrite_cv,categorical_cutoff,class_label,instance_label,random_state)
+                    submitLocalJob(cv_train_path,cv_test_path,output_path+'/'+experiment_name,scale_data,impute_data,overwrite_cv,categorical_cutoff,class_label,instance_label,random_state)
 
         #Update metadata
         if metadata.shape[0] == 5: #Only update if metadata below hasn't been added before (i.e. in a previous phase 2 run)

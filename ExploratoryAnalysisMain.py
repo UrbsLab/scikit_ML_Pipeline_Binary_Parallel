@@ -9,7 +9,13 @@ import csv
 
 '''Phase 1 of Machine Learning Analysis Pipeline:
 Sample Run Command:
-python ExploratoryAalysisMain.py --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1
+python ExploratoryAnalysisMain.py --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1
+
+Local Command:
+python ExploratoryAnalysisMain.py --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False --cv 3
+OR
+python ExploratoryAnalysisMain.py --instance-label Instance --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False --cv 3
+
 
 WARNINGS:
 -no spaces are allowed in filenames!! - this will lead to 'invalid litteral' export_exploratory_analysis
@@ -36,7 +42,7 @@ def main(argv):
     parser.add_argument('--export-fc', dest='export_feature_correlations', type=str, help='run and export feature correlation analysis (yields correlation heatmap)',default="True")
     parser.add_argument('--export-up', dest='export_univariate_plots', type=str, help='export univariate analysis plots (note: univariate analysis still output by default)',default="True")
     parser.add_argument('--random-state', dest='random_state', type=int, help='sets a specific random seed for reproducible results',default=42)
-    parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
+    parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='if run parallel',default="True")
     parser.add_argument('--res-mem', dest='reserved_memory', type=int, help='reserved memory for the job (in Gigabytes)',default=4)
     parser.add_argument('--max-mem', dest='maximum_memory', type=int, help='maximum memory before the job is automatically terminated',default=15)
     parser.add_argument('-c','--do-check',dest='do_check', help='Boolean: Specify whether to check for existence of all output files.', action='store_true')
@@ -63,7 +69,7 @@ def main(argv):
     export_feature_correlations = options.export_feature_correlations
     export_univariate_plots = options.export_univariate_plots
     random_state = options.random_state
-    run_parallel = options.run_parallel
+    run_parallel = options.run_parallel == 'True'
     reserved_memory = options.reserved_memory
     maximum_memory = options.maximum_memory
     do_check = options.do_check

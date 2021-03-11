@@ -25,7 +25,7 @@ def main(argv):
     options = parser.parse_args(argv[1:])
     output_path = options.output_path
     experiment_name = options.experiment_name
-    run_parallel = options.run_parallel
+    run_parallel = options.run_parallel == 'True'
     reserved_memory = options.reserved_memory
     maximum_memory = options.maximum_memory
 

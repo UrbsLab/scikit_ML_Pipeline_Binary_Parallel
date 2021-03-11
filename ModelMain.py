@@ -11,11 +11,14 @@ import csv
 '''Phase 5 of Machine Learning Analysis Pipeline:
 Sample Run Command:
 python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
+
+Local Command:
+python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False --do-ExSTraCS True --do-NB True
 '''
 
 def main(argv):
     #Parse arguments
-    default_arg = 'True'
+    default_arg = 'False'
     parser = argparse.ArgumentParser(description='')
     #No defaults
     parser.add_argument('--output-path', dest='output_path', type=str, help='path to output directory')
@@ -80,7 +83,7 @@ def main(argv):
     timeout = options.timeout
     lcs_timeout = options.lcs_timeout
     export_hyper_sweep_plots = options.export_hyper_sweep_plots
-    run_parallel = options.run_parallel
+    run_parallel = options.run_parallel == 'True'
     reserved_memory = options.reserved_memory
     maximum_memory = options.maximum_memory
     do_check = options.do_check

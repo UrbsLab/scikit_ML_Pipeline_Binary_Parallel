@@ -43,7 +43,6 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
     original_headers = pd.read_csv(full_path+"/exploratory/OriginalHeaders.csv",sep=',').columns.values.tolist()
 
     #Main Ops
-
     result_table = []
     metric_dict = {}
     for algorithm in algorithms:

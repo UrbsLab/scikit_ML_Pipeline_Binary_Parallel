@@ -9,6 +9,7 @@ import random
 from sklearn.preprocessing import StandardScaler
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
+from ExploratoryAnalysisJob import identifyCategoricalFeatures
 import csv
 import time
 
@@ -48,6 +49,9 @@ def job(cv_train_path,cv_test_path,experiment_path,scale_data,impute_data,overwr
         categorical_variables = identifyCategoricalFeatures(x_data,categorical_cutoff)
     else:
         categorical_variables = categorical_attribute_headers
+
+    scale_data = scale_data == 'True'
+    impute_data = impute_data == 'True'
 
     #Scale Data
     if scale_data:
@@ -166,14 +170,6 @@ def imputeCVData(class_label,instance_label,categorical_variables,data,random_st
     return data
 
 ###################################
-def identifyCategoricalFeatures(x_data,categorical_cutoff):
-    """ Takes a dataframe (of independent variables) with column labels and returns a list of column names identified as
-    being categorical based on user defined cutoff. """
-    categorical_variables = []
-    for each in x_data:
-        if x_data[each].nunique() <= categorical_cutoff:
-            categorical_variables.append(each)
-    return categorical_variables
 
 if __name__ == '__main__':
     job(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6],int(sys.argv[7]),sys.argv[8],sys.argv[9],int(sys.argv[10]))

@@ -11,6 +11,9 @@ import glob
 '''Phase 4 of Machine Learning Analysis Pipeline:
 Sample Run Command:
 python FeatureSelectionMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
+
+Local Command:
+python FeatureSelectionMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False
 '''
 
 def main(argv):
@@ -24,7 +27,7 @@ def main(argv):
     parser.add_argument('--filter-features', dest='filter_poor_features', type=str, help='filter out the worst performing features prior to modeling',default='True')
     parser.add_argument('--top-results', dest='top_results', type=int,help='number of top features to illustrate in figures', default=20)
     parser.add_argument('--export-scores', dest='export_scores', type=str,help='export figure summarizing average feature importance scores over cv partitions', default='True')
-    parser.add_argument('--overwrite-cv', dest='overwrite_cv',type=str,help='overwrites working cv datasets with new feature subset datasets',default="True")
+    parser.add_argument('--overwrite-cv', dest='overwrite_cv',type=str,help='overwrites working cv datasets with new feature subset datasets',default="False")
     parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
     parser.add_argument('--res-mem', dest='reserved_memory', type=int, help='reserved memory for the job (in Gigabytes)',default=4)
     parser.add_argument('--max-mem', dest='maximum_memory', type=int, help='maximum memory before the job is automatically terminated',default=15)
@@ -38,7 +41,7 @@ def main(argv):
     top_results = options.top_results
     export_scores = options.export_scores
     overwrite_cv = options.overwrite_cv
-    run_parallel = options.run_parallel
+    run_parallel = options.run_parallel == 'True'
     reserved_memory = options.reserved_memory
     maximum_memory = options.maximum_memory
     do_check = options.do_check
@@ -69,7 +72,7 @@ def main(argv):
             if run_parallel:
                 submitClusterJob(full_path,output_path+'/'+experiment_name,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv,reserved_memory,maximum_memory)
             else:
-                submitLocalJob(full_path,output_path+'/'+experiment_name,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv)
+                submitLocalJob(full_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv)
 
         #Update metadata
         if metadata.shape[0] == 9: #Only update if metadata below hasn't been added before (i.e. in a previous phase 2 run)
@@ -104,8 +107,8 @@ def main(argv):
             print("Above Phase 4 Jobs Not Completed")
         print()
 
-def submitLocalJob(full_path,experiment_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv):
-    FeatureSelectionJob.job(full_path,experiment_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv)
+def submitLocalJob(full_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv):
+    FeatureSelectionJob.job(full_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv)
 
 def submitClusterJob(full_path,experiment_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv,reserved_memory,maximum_memory):
     job_ref = str(time.time())
@@ -120,7 +123,7 @@ def submitClusterJob(full_path,experiment_path,do_mutual_info,do_multisurf,max_f
     sh_file.write('#BSUB -e ' + experiment_path+'/logs/P4_'+job_ref+'.e\n')
 
     this_file_path = os.path.dirname(os.path.realpath(__file__))
-    sh_file.write('python '+this_file_path+'/FeatureSelectionJob.py '+full_path+" "+experiment_path+" "+do_mutual_info+" "+do_multisurf+" "+
+    sh_file.write('python '+this_file_path+'/FeatureSelectionJob.py '+full_path+" "+do_mutual_info+" "+do_multisurf+" "+
                   str(max_features_to_keep)+" "+filter_poor_features+" "+str(top_results)+" "+export_scores+" "+class_label+" "+instance_label+" "+str(cv_partitions)+" "+overwrite_cv+'\n')
     sh_file.close()
     os.system('bsub < ' + job_name)

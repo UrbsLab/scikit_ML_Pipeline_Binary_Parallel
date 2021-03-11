@@ -9,12 +9,14 @@ import os
 import csv
 import sys
 
-def job(full_path,experiment_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv):
+def job(full_path,do_mutual_info,do_multisurf,max_features_to_keep,filter_poor_features,top_results,export_scores,class_label,instance_label,cv_partitions,overwrite_cv):
     job_start_time = time.time()
     dataset_name = full_path.split('/')[-1]
     selected_feature_lists = {}
     meta_feature_ranks = {}
     algorithms = []
+
+    filter_poor_features = filter_poor_features == 'True'
 
     #Mutual Information
     if do_mutual_info == 'True':
@@ -26,14 +28,14 @@ def job(full_path,experiment_path,do_mutual_info,do_multisurf,max_features_to_ke
         algorithms.append('MultiSURF')
         selected_feature_lists,meta_feature_ranks = reportAveFS("MultiSURF","multisurf",cv_partitions,top_results,full_path,selected_feature_lists,meta_feature_ranks,export_scores)
 
-    print(algorithms)
-    #Feature Selection
-    if filter_poor_features:
-        #Identify top feature subset
-        cv_selected_list = selectFeatures(algorithms,cv_partitions,selected_feature_lists,max_features_to_keep,meta_feature_ranks)
+    if len(algorithms) != 0:
+        #Feature Selection
+        if filter_poor_features:
+            #Identify top feature subset
+            cv_selected_list = selectFeatures(algorithms,cv_partitions,selected_feature_lists,max_features_to_keep,meta_feature_ranks)
 
-        #Generate new datasets with selected feature subsets
-        genFilteredDatasets(cv_selected_list,class_label,instance_label,cv_partitions,full_path+'/CVDatasets',dataset_name,overwrite_cv)
+            #Generate new datasets with selected feature subsets
+            genFilteredDatasets(cv_selected_list,class_label,instance_label,cv_partitions,full_path+'/CVDatasets',dataset_name,overwrite_cv)
 
     # Save Runtime
     runtime_file = open(full_path + '/runtime/runtime_featureselection.txt', 'w')
@@ -199,4 +201,4 @@ def genFilteredDatasets(cv_selected_list,class_label,instance_label,cv_partition
         file.close()
 
 if __name__ == '__main__':
-    job(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5]), sys.argv[6], int(sys.argv[7]),sys.argv[8], sys.argv[9],sys.argv[10],int(sys.argv[11]),sys.argv[12])
+    job(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5], int(sys.argv[6]),sys.argv[7], sys.argv[8],sys.argv[9],int(sys.argv[10]),sys.argv[11])

@@ -10,6 +10,9 @@ import glob
 '''Phase 6 of Machine Learning Analysis Pipeline:
 Sample Run Command:
 python StatsMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
+
+Local Command:
+python StatsMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False
 '''
 
 def main(argv):
@@ -33,7 +36,7 @@ def main(argv):
     plot_ROC = options.plot_ROC
     plot_PRC = options.plot_PRC
     plot_FI = options.plot_FI
-    run_parallel = options.run_parallel
+    run_parallel = options.run_parallel == 'True'
     reserved_memory = options.reserved_memory
     maximum_memory = options.maximum_memory
     do_check = options.do_check

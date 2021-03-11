@@ -331,7 +331,7 @@ def identifyCategoricalFeatures(x_data,categorical_cutoff):
     being categorical based on user defined cutoff. """
     categorical_variables = []
     for each in x_data:
-        if x_data[each].nunique() <= categorical_cutoff:
+        if x_data[each].nunique() <= categorical_cutoff or not pd.api.types.is_numeric_dtype(x_data[each]):
             categorical_variables.append(each)
     return categorical_variables
 

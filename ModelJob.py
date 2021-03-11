@@ -3,6 +3,7 @@ import time
 import random
 import pandas as pd
 import numpy as np
+import os
 
 import pickle
 import copy
@@ -886,9 +887,9 @@ def run_XCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 #ExSTraCS (learning classifier system) ###############################
 def objective_ExSTraCS(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, scoring_metric):
     params = {'learning_iterations': trial.suggest_categorical('learning_iterations', param_grid['learning_iterations']),
-        'N': trial.suggest_categorical('N', param_grid['N']),
-        'nu': trial.suggest_categorical('nu', param_grid['nu']),
-        'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
+              'N': trial.suggest_categorical('N', param_grid['N']), 'nu': trial.suggest_categorical('nu', param_grid['nu']),
+              'random_state' : trial.suggest_categorical('random_state',param_grid['random_state']),
+              'expert_knowledge':param_grid['expert_knowledge']}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def get_FI_subset_ExSTraCS(full_path,i,instance_label,class_label,filter_poor_features):
@@ -897,30 +898,33 @@ def get_FI_subset_ExSTraCS(full_path,i,instance_label,class_label,filter_poor_fe
     scores = [] #to be filled in, in filted dataset order.
     data_name = full_path.split('/')[-1]
 
-    if filter_poor_features == 'True':
-        #Load current data ordered_feature_names
-        header = pd.read_csv(full_path+'/CVDatasets/'+data_name+'_CV_'+str(i)+'_Test.csv').columns.values.tolist()
-        if instance_label != 'None':
-            header.remove(instance_label)
-        header.remove(class_label)
+    if os.path.exists(full_path+ "/"+algorithmlabel+"/pickledForPhase4/"): #If MultiSURF was done previously
+        if filter_poor_features == 'True':
+            #Load current data ordered_feature_names
+            header = pd.read_csv(full_path+'/CVDatasets/'+data_name+'_CV_'+str(i)+'_Test.csv').columns.values.tolist()
+            if instance_label != 'None':
+                header.remove(instance_label)
+            header.remove(class_label)
 
-        #Load orignal dataset multisurf scores
-        scoreInfo = full_path+ "/"+algorithmlabel+"/pickledForPhase4/"+str(i)
-        file = open(scoreInfo, 'rb')
-        rawData = pickle.load(file)
-        file.close()
-        scoreDict = rawData[1]
+            #Load orignal dataset multisurf scores
+            scoreInfo = full_path+ "/"+algorithmlabel+"/pickledForPhase4/"+str(i)
+            file = open(scoreInfo, 'rb')
+            rawData = pickle.load(file)
+            file.close()
+            scoreDict = rawData[1]
 
-        #Generate filtered multisurf score list with same order as working datasets
-        for each in header:
-            scores.append(scoreDict[each])
+            #Generate filtered multisurf score list with same order as working datasets
+            for each in header:
+                scores.append(scoreDict[each])
+        else:
+            #Load orignal dataset multisurf scores
+            scoreInfo = full_path+ "/"+algorithmlabel+"/pickledForPhase4/"+str(i)
+            file = open(scoreInfo, 'rb')
+            rawData = pickle.load(file)
+            file.close()
+            scores = rawData[0]
     else:
-        #Load orignal dataset multisurf scores
-        scoreInfo = full_path+ "/"+algorithmlabel+"/pickledForPhase4/"+str(i)
-        file = open(scoreInfo, 'rb')
-        rawData = pickle.load(file)
-        file.close()
-        scores = rawData[0]
+        scores = []
     return scores
 
 def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path,filter_poor_features,instance_label,class_label):
@@ -930,7 +934,7 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
 
     isSingle = True
     for key, value in param_grid.items():
-        if len(value) > 1:
+        if len(value) > 1 and key != 'expert_knowledge':
             isSingle = False
 
     est = ExSTraCS()
@@ -958,7 +962,10 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
     else:
         params = copy.deepcopy(param_grid)
         for key, value in param_grid.items():
-            params[key] = value[0]
+            if key == 'expert_knowledge':
+                params[key] = value
+            else:
+                params[key] = value[0]
         clf = est.set_params(**params)
 
     print(clf)
@@ -1132,7 +1139,7 @@ def hyperparameters(random_state):
     """ Smaller datasets
     param_grid_ExSTraCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
     """
-    param_grid_ExSTraCS = {'learning_iterations': [200000],'N': [2000],'nu': [1],'random_state':[random_state],'rule_compaction':[None],'expert_knowledge':[None]}
+    param_grid_ExSTraCS = {'learning_iterations': [20000],'N': [1000],'nu': [10],'random_state':[random_state],'rule_compaction':[None],'expert_knowledge':[None]}
 
     # eLCS
     """ Smaller datasets
