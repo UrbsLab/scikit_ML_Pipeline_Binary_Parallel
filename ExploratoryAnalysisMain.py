@@ -18,7 +18,7 @@ python ExploratoryAnalysisMain.py --instance-label Instance --data-path /Users/r
 
 
 WARNINGS:
--no spaces are allowed in filenames!! - this will lead to 'invalid litteral' export_exploratory_analysis
+-no spaces are allowed in filenames!! - this will lead to 'invalid literal' export_exploratory_analysis
 -all datasets in target folder being analyzed must have the same class and instance labels (if any for the latter)
 '''
 

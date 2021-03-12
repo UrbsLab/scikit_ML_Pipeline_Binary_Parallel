@@ -65,7 +65,6 @@ def main(argv):
         dataset_paths.remove('metadata.csv')
         for dataset_directory_path in dataset_paths:
             full_path = output_path+"/"+experiment_name+"/"+dataset_directory_path
-            cv_count = 0
             for cv_train_path in glob.glob(full_path+"/CVDatasets/*Train.csv"):
                 cv_test_path = cv_train_path.replace("Train.csv","Test.csv")
                 if run_parallel:
