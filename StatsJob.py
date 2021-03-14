@@ -58,6 +58,9 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
         s_tn = []
         s_fp = []
         s_fn = []
+        s_npv = []
+        s_lrp = []
+        s_lrm = []
 
         # Define feature importance lists
         FI_all = []
@@ -98,6 +101,9 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
             s_tn.append(metricList[7])
             s_fp.append(metricList[8])
             s_fn.append(metricList[9])
+            s_npv.append(metricList[10])
+            s_lrp.append(metricList[11])
+            s_lrm.append(metricList[12])
 
             alg_result_table.append([fpr, tpr, roc_auc, recall, prec, prec_rec_auc, ave_prec])
 
@@ -133,14 +139,14 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
         #ROC plot
         mean_tpr = np.mean(tprs, axis=0)
         mean_tpr[-1] = 1.0
-        mean_auc = auc(mean_fpr, mean_tpr)
         if plot_ROC=='True':
-            plt.figure(figsize=(7, 7))
             # Plot individual CV ROC line
-            for i in range(0,cv_partitions):
+            for i in range(cv_partitions):
                 plt.plot(alg_result_table[i][0], alg_result_table[i][1], lw=1, alpha=0.3,label='ROC fold %d (AUC = %0.2f)' % (i, alg_result_table[i][2]))
 
             plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',label='Chance', alpha=.8)
+
+            mean_auc = np.mean(aucs)
             std_auc = np.std(aucs)
             std_tpr = np.std(tprs, axis=0)
             plt.plot(mean_fpr, mean_tpr, color=colors[algorithm],label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),lw=2, alpha=.8)
@@ -153,32 +159,41 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
             plt.xlabel('False Positive Rate')
             plt.ylabel('True Positive Rate')
             plt.title(algorithm + ' : ROC over CV Partitions')
-            plt.legend(loc="best")
+            plt.legend(loc="upper left", bbox_to_anchor=(1.05,1))
             plt.savefig(full_path+'/training/results/'+abbrev[algorithm]+"_ROC.png", bbox_inches="tight")
             plt.close('all')
 
         #PRC plot
         mean_prec = np.mean(precs, axis=0)
-        mean_pr_auc = auc(mean_recall, mean_prec)
         if plot_PRC=='True':
-            std_auc = np.std(praucs)
-            plt.plot(mean_recall, mean_prec, color=colors[algorithm],label=r'Mean PRC (AUC = %0.2f $\pm$ %0.2f)' % (mean_pr_auc, std_auc),lw=2, alpha=.8)
+            for i in range(cv_partitions):
+                plt.plot(alg_result_table[i][3], alg_result_table[i][4], lw=1, alpha=0.3, label='PRC fold %d (AUC = %0.2f)' % (i, alg_result_table[i][5]))
 
+            test = pd.read_csv(full_path + '/CVDatasets/' + data_name + '_CV_0_Test.csv')
+            if instance_label != 'None':
+                test = test.drop(instance_label, axis=1)
+            testY = test[class_label].values
+            noskill = len(testY[testY == 1]) / len(testY)  # Fraction of cases
+            plt.plot([0, 1], [noskill, noskill], color='orange', linestyle='--', label='Chance', alpha=.8)
+
+            mean_pr_auc = np.mean(praucs)
+            std_pr_auc = np.std(praucs)
             std_prec = np.std(precs, axis=0)
+            plt.plot(mean_recall, mean_prec, color=colors[algorithm],label=r'Mean PRC (AUC = %0.2f $\pm$ %0.2f)' % (mean_pr_auc, std_pr_auc),lw=2, alpha=.8)
             precs_upper = np.minimum(mean_prec + std_prec, 1)
             precs_lower = np.maximum(mean_prec - std_prec, 0)
             plt.fill_between(mean_fpr, precs_lower, precs_upper, color='grey', alpha=.2,label=r'$\pm$ 1 std. dev.')
 
             plt.xlim([-0.05, 1.05])
             plt.ylim([-0.05, 1.05])
-            plt.xlabel('Recall')
-            plt.ylabel('Precision')
+            plt.xlabel('Recall (Sensitivity)')
+            plt.ylabel('Precision (PPV)')
             plt.title(algorithm + ' : PRC over CV Partitions')
-            plt.legend(loc="best")
+            plt.legend(loc="upper left", bbox_to_anchor=(1.05,1))
             plt.savefig(full_path+'/training/results/'+abbrev[algorithm]+"_PRC.png", bbox_inches="tight")
             plt.close('all')
 
-        results = {'Balanced Accuracy': s_bac, 'Accuracy': s_ac, 'F1_Score': s_f1, 'Recall': s_re, 'Specificity': s_sp,'Precision': s_pr, 'TP': s_tp, 'TN': s_tn, 'FP': s_fp, 'FN': s_fn, 'ROC_AUC': aucs,'PRC_AUC': praucs, 'PRC_APS': aveprecs}
+        results = {'Balanced Accuracy': s_bac, 'Accuracy': s_ac, 'F1_Score': s_f1, 'Sensitivity (Recall)': s_re, 'Specificity': s_sp,'Precision (PPV)': s_pr, 'TP': s_tp, 'TN': s_tn, 'FP': s_fp, 'FN': s_fn, 'NPV': s_npv, 'LR+': s_lrp, 'LR-': s_lrm, 'ROC_AUC': aucs,'PRC_AUC': praucs, 'PRC_APS': aveprecs}
         save_performance(abbrev[algorithm],results,full_path)
         metric_dict[algorithm] = results
 
@@ -194,13 +209,12 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
 
     #Plot summarizing ROC
     if plot_ROC=='True':
-        fig = plt.figure(figsize=(8, 8))
         count = 0
         for i in result_table.index:
             plt.plot(result_table.loc[i]['fpr'],result_table.loc[i]['tpr'], color=colors[i],label="{}, AUC={:.3f}".format(i, result_table.loc[i]['auc']))
             count += 1
 
-        plt.plot([0, 1], [0, 1], color='orange', linestyle='--')
+        plt.plot([0, 1], [0, 1], color='orange', linestyle='--', label='Chance', alpha=.8)
 
         plt.xticks(np.arange(0.0, 1.1, step=0.1))
         plt.xlabel("False Positive Rate", fontsize=15)
@@ -215,34 +229,33 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
 
     # Plot summarizing PRC
     if plot_PRC=='True':
-        fig = plt.figure(figsize=(8, 8))
-
         count = 0
         for i in result_table.index:
             plt.plot(result_table.loc[i]['fpr'],result_table.loc[i]['prec'], color=colors[i],label="{}, AUC={:.3f}, APS={:.3f}".format(i, result_table.loc[i]['pr_auc'],result_table.loc[i]['ave_prec']))
             count += 1
+
         test = pd.read_csv(full_path+'/CVDatasets/'+data_name+'_CV_0_Test.csv')
         if instance_label != 'None':
             test = test.drop(instance_label, axis=1)
         testY = test[class_label].values
         noskill = len(testY[testY == 1]) / len(testY)  # Fraction of cases
-        plt.plot([0, 1], [noskill, noskill], color='orange', linestyle='--')
+
+        plt.plot([0, 1], [noskill, noskill], color='orange', linestyle='--',label='Chance', alpha=.8)
 
         plt.xticks(np.arange(0.0, 1.1, step=0.1))
-        plt.xlabel("Recall", fontsize=15)
+        plt.xlabel("Recall (sensitivity)", fontsize=15)
 
         plt.yticks(np.arange(0.0, 1.1, step=0.1))
-        plt.ylabel("Precision", fontsize=15)
+        plt.ylabel("Precision (PPV)", fontsize=15)
 
         plt.title('Comparing Algorithms: Testing Data with CV', fontweight='bold', fontsize=15)
         plt.legend(prop={'size': 13}, loc='best')
         plt.savefig(full_path+'/training/results/Summary_PRC.png', bbox_inches="tight")
         plt.close('all')
-
-
     metrics = list(metric_dict[algorithms[0]].keys())
-    #Save Average Metrics
-    with open(full_path+'/training/results/Summary_performance.csv',mode='w') as file:
+
+    #Save Average Metrics (mean)
+    with open(full_path+'/training/results/Summary_performance_mean.csv',mode='w') as file:
         writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         e = ['']
         e.extend(metrics)
@@ -252,7 +265,23 @@ def job(full_path,encoded_algos,plot_ROC,plot_PRC,plot_FI,class_label,instance_l
             for l in list(metric_dict[algorithm].values()):
                 meani = mean(l)
                 std = stdev(l)
-                astats.append(str(meani)+' ('+str(std)+")")
+                astats.append(str(meani))
+            toAdd = [algorithm]
+            toAdd.extend(astats)
+            writer.writerow(toAdd)
+    file.close()
+
+    # Save Average Metrics (std)
+    with open(full_path + '/training/results/Summary_performance_std.csv', mode='w') as file:
+        writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        e = ['']
+        e.extend(metrics)
+        writer.writerow(e)  # Write headers (balanced accuracy, etc.)
+        for algorithm in metric_dict:
+            astats = []
+            for l in list(metric_dict[algorithm].values()):
+                std = stdev(l)
+                astats.append(str(std))
             toAdd = [algorithm]
             toAdd.extend(astats)
             writer.writerow(toAdd)

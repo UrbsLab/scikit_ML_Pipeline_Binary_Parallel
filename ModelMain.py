@@ -13,12 +13,12 @@ Sample Run Command:
 python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
 
 Local Command:
-python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False --do-ExSTraCS True --do-NB True
+python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False --do-ExSTraCS True --do-NB True --do-LR True --do-KN True --subsample 1000
 '''
 
 def main(argv):
     #Parse arguments
-    default_arg = 'True'
+    default_arg = 'False'
     parser = argparse.ArgumentParser(description='')
     #No defaults
     parser.add_argument('--output-path', dest='output_path', type=str, help='path to output directory')
@@ -41,6 +41,11 @@ def main(argv):
     parser.add_argument('--n-trials', dest='n_trials', type=int,help='# of bayesian hyperparameter optimization trials using optuna', default=100)
     parser.add_argument('--timeout', dest='timeout', type=int,help='seconds until hyperparameter sweep stops running new trials (Note: it may run longer to finish last trial started)', default=300)
     parser.add_argument('--lcs-timeout', dest='lcs_timeout', type=int, help='seconds until hyperparameter sweep stops for LCS algorithms', default=1200)
+    parser.add_argument('--do-LCS-sweep', dest='do_LCS_sweep', type=str, help='do LCS hyperparam tuning or use below params',default='False')
+    parser.add_argument('--nu', dest='nu', type=int, help='universal LCS nu param', default=1)
+    parser.add_argument('--iter', dest='iter', type=int, help='universal LCS # learning iterations param', default=20000)
+    parser.add_argument('--N', dest='N', type=int, help='universal LCS N param', default=2000)
+    parser.add_argument('--subsample', dest='training_subsample', type=int, help='for long running algos, option to subsample training set', default=0)
     parser.add_argument('--export-hyper-sweep', dest='export_hyper_sweep_plots', type=str, default='True')
     parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
     parser.add_argument('--res-mem', dest='reserved_memory', type=int, help='reserved memory for the job (in Gigabytes)',default=4)
@@ -82,6 +87,11 @@ def main(argv):
     n_trials = options.n_trials
     timeout = options.timeout
     lcs_timeout = options.lcs_timeout
+    do_lcs_sweep = options.do_LCS_sweep
+    nu = options.nu
+    iter = options.iter
+    N = options.N
+    training_subsample = options.training_subsample
     export_hyper_sweep_plots = options.export_hyper_sweep_plots
     run_parallel = options.run_parallel == 'True'
     reserved_memory = options.reserved_memory
@@ -121,9 +131,9 @@ def main(argv):
                 test_file_path = full_path + '/CVDatasets/' + dataset_directory_path + "_CV_" + str(cvCount) + "_Test.csv"
                 for algorithm in algorithms:
                     if run_parallel:
-                        submitClusterJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,output_path+'/'+experiment_name,cvCount,filter_poor_features,reserved_memory,maximum_memory)
+                        submitClusterJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,output_path+'/'+experiment_name,cvCount,filter_poor_features,reserved_memory,maximum_memory,do_lcs_sweep,nu,iter,N,training_subsample)
                     else:
-                        submitLocalJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount,filter_poor_features)
+                        submitLocalJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount,filter_poor_features,do_lcs_sweep,nu,iter,N,training_subsample)
 
         # Update metadata
         with open(output_path + '/' + experiment_name + '/' + 'metadata.csv', mode='a') as file:
@@ -141,6 +151,11 @@ def main(argv):
             writer.writerow(["XCS", options.do_XCS])
             writer.writerow(["GB", options.do_GB])
             writer.writerow(["KN", options.do_KN])
+            writer.writerow(['do LCS sweep',options.do_LCS_sweep])
+            writer.writerow(['nu', options.nu])
+            writer.writerow(['iter', options.iter])
+            writer.writerow(['N', options.N])
+            writer.writerow(['training subsample', options.training_subsample])
         file.close()
 
     else: #run job checks
@@ -172,10 +187,10 @@ def main(argv):
             print("Above Phase 5 Jobs Not Completed")
         print()
 
-def submitLocalJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount,filter_poor_features):
-    ModelJob.job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount,filter_poor_features)
+def submitLocalJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount,filter_poor_features,do_lcs_sweep,nu,iter,N,training_subsample):
+    ModelJob.job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount,filter_poor_features,do_lcs_sweep,nu,iter,N,training_subsample)
 
-def submitClusterJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,experiment_path,cvCount,filter_poor_features,reserved_memory,maximum_memory):
+def submitClusterJob(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,experiment_path,cvCount,filter_poor_features,reserved_memory,maximum_memory,do_lcs_sweep,nu,iter,N,training_subsample):
     job_ref = str(time.time())
     job_name = experiment_path+'/jobs/P5_'+str(algorithm)+'_'+str(cvCount)+'_'+job_ref+'_run.sh'
     sh_file = open(job_name,'w')
@@ -190,7 +205,7 @@ def submitClusterJob(algorithm,train_file_path,test_file_path,full_path,n_trials
     this_file_path = os.path.dirname(os.path.realpath(__file__))
     sh_file.write('python '+this_file_path+'/ModelJob.py '+algorithm+" "+train_file_path+" "+test_file_path+" "+full_path+" "+
                   str(n_trials)+" "+str(timeout)+" "+str(lcs_timeout)+" "+export_hyper_sweep_plots+" "+instance_label+" "+class_label+" "+
-                  str(random_state)+" "+str(cvCount)+" "+str(filter_poor_features)+'\n')
+                  str(random_state)+" "+str(cvCount)+" "+str(filter_poor_features)+" "+str(do_lcs_sweep)+" "+str(nu)+" "+str(iter)+" "+str(N)+" "+str(training_subsample)+'\n')
     sh_file.close()
     os.system('bsub < ' + job_name)
     pass

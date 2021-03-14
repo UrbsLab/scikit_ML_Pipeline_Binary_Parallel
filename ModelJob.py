@@ -9,7 +9,7 @@ import pickle
 import copy
 
 #Scikit-Learn Packages:
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score, StratifiedShuffleSplit
 from sklearn.model_selection import GridSearchCV
 from sklearn.base import clone
 from sklearn.ensemble import RandomForestClassifier
@@ -37,13 +37,15 @@ import xgboost as xgb
 import lightgbm as lgb
 import optuna #hyperparameter optimization
 
-def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount,filter_poor_features):
+def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_timeout,export_hyper_sweep_plots,instance_label,class_label,random_state,cvCount,filter_poor_features,do_lcs_sweep,nu,iter,N,training_subsample):
     job_start_time = time.time()
     random.seed(random_state)
     np.random.seed(random_state)
 
+    do_lcs_sweep = do_lcs_sweep != 'False'
+
     #Get hyperparameter grid
-    param_grid = hyperparameters(random_state)[algorithm]
+    param_grid = hyperparameters(random_state,do_lcs_sweep,nu,iter,N)[algorithm]
 
     #Get X and Y
     train = pd.read_csv(train_file_path)
@@ -75,7 +77,7 @@ def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_
     elif algorithm == 'ANN':
         ret = run_ANN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'SVM':
-        ret = run_SVM_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
+        ret = run_SVM_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path,training_subsample)
     elif algorithm == 'eLCS':
         ret = run_eLCS_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, lcs_timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'XCS':
@@ -85,7 +87,7 @@ def job(algorithm,train_file_path,test_file_path,full_path,n_trials,timeout,lcs_
     elif algorithm == 'gradient_boosting':
         ret = run_GB_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
     elif algorithm == 'k_neighbors':
-        ret = run_KN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path)
+        ret = run_KN_full(trainX, trainY, testX, testY, random_state, cvCount, param_grid, n_trials, timeout,export_hyper_sweep_plots, full_path,training_subsample)
     pickle.dump(ret, open(full_path + '/training/' + abbrev[algorithm] + '_CV_' + str(cvCount) + "_metrics", 'wb'))
 
     # Save Runtime
@@ -123,28 +125,42 @@ def objective_LR(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, sc
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_LR_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
+    isSingle = True
+    for key, value in param_grid.items():
+        if len(value) > 1:
+            isSingle = False
+
     est = LogisticRegression()
-    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
-    study = optuna.create_study(direction='maximize', sampler=sampler)
-    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
-    study.optimize(lambda trial: objective_LR(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    if do_plot == 'True':
-        fig = optuna.visualization.plot_parallel_coordinate(study)
-        fig.write_image(full_path+'/training/LR_ParamOptimization_'+str(i)+'.png')
+    if not isSingle:
+        sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+        study = optuna.create_study(direction='maximize', sampler=sampler)
+        optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+        study.optimize(lambda trial: objective_LR(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    print('Best trial:')
-    best_trial = study.best_trial
-    print('  Value: ', best_trial.value)
-    print('  Params: ')
-    for key, value in best_trial.params.items():
-        print('    {}: {}'.format(key, value))
+        if do_plot == 'True':
+            fig = optuna.visualization.plot_parallel_coordinate(study)
+            fig.write_image(full_path+'/training/LR_ParamOptimization_'+str(i)+'.png')
 
-    # Train model using 'best' hyperparameters
-    est = LogisticRegression()
-    clf = est.set_params(**best_trial.params)
+        print('Best trial:')
+        best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
+
+        # Train model using 'best' hyperparameters
+        est = LogisticRegression()
+        clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/LR_bestparams' + str(i) + '.csv', best_trial.params)
+    else:
+        params = copy.deepcopy(param_grid)
+        for key, value in param_grid.items():
+            params[key] = value[0]
+        clf = est.set_params(**params)
+        export_best_params(full_path + '/training/LR_usedparams' + str(i) + '.csv', params)
+
     print(clf)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -185,29 +201,43 @@ def objective_DT(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, sc
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_DT_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
-    # Run Hyperparameter sweep
+    isSingle = True
+    for key, value in param_grid.items():
+        if len(value) > 1:
+            isSingle = False
+
     est = tree.DecisionTreeClassifier()
-    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
-    study = optuna.create_study(direction='maximize', sampler=sampler)
-    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
-    study.optimize(lambda trial: objective_DT(trial, est, x_train, y_train, randSeed, 3, param_grid, "balanced_accuracy"),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    if do_plot == 'True':
-        fig = optuna.visualization.plot_parallel_coordinate(study)
-        fig.write_image(full_path+'/training/DT_ParamOptimization_'+str(i)+'.png')
+    if not isSingle:
+        # Run Hyperparameter sweep
+        sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+        study = optuna.create_study(direction='maximize', sampler=sampler)
+        optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+        study.optimize(lambda trial: objective_DT(trial, est, x_train, y_train, randSeed, 3, param_grid, "balanced_accuracy"),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    print('Best trial:')
-    best_trial = study.best_trial
-    print('  Value: ', best_trial.value)
-    print('  Params: ')
-    for key, value in best_trial.params.items():
-        print('    {}: {}'.format(key, value))
+        if do_plot == 'True':
+            fig = optuna.visualization.plot_parallel_coordinate(study)
+            fig.write_image(full_path+'/training/DT_ParamOptimization_'+str(i)+'.png')
 
-    # Train model using 'best' hyperparameters
-    est = tree.DecisionTreeClassifier()
-    clf = est.set_params(**best_trial.params)
+        print('Best trial:')
+        best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
+
+        # Train model using 'best' hyperparameters
+        est = tree.DecisionTreeClassifier()
+        clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/DT_bestparams' + str(i) + '.csv', best_trial.params)
+    else:
+        params = copy.deepcopy(param_grid)
+        for key, value in param_grid.items():
+            params[key] = value[0]
+        clf = est.set_params(**params)
+        export_best_params(full_path + '/training/DT_usedparams' + str(i) + '.csv', params)
+
     print(clf)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -250,29 +280,43 @@ def objective_RF(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, sc
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_RF_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
-    # Run Hyperparameter sweep
+    isSingle = True
+    for key, value in param_grid.items():
+        if len(value) > 1:
+            isSingle = False
+
     est = RandomForestClassifier()
-    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
-    study = optuna.create_study(direction='maximize', sampler=sampler)
-    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
-    study.optimize(lambda trial: objective_RF(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    if do_plot == 'True':
-        fig = optuna.visualization.plot_parallel_coordinate(study)
-        fig.write_image(full_path+'/training/RF_ParamOptimization_'+str(i)+'.png')
+    if not isSingle:
+        # Run Hyperparameter sweep
+        sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+        study = optuna.create_study(direction='maximize', sampler=sampler)
+        optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+        study.optimize(lambda trial: objective_RF(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    print('Best trial:')
-    best_trial = study.best_trial
-    print('  Value: ', best_trial.value)
-    print('  Params: ')
-    for key, value in best_trial.params.items():
-        print('    {}: {}'.format(key, value))
+        if do_plot == 'True':
+            fig = optuna.visualization.plot_parallel_coordinate(study)
+            fig.write_image(full_path+'/training/RF_ParamOptimization_'+str(i)+'.png')
 
-    # Train model using 'best' hyperparameters
-    est = RandomForestClassifier()
-    clf = est.set_params(**best_trial.params)
+        print('Best trial:')
+        best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
+
+        # Train model using 'best' hyperparameters
+        est = RandomForestClassifier()
+        clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/RF_bestparams' + str(i) + '.csv', best_trial.params)
+    else:
+        params = copy.deepcopy(param_grid)
+        for key, value in param_grid.items():
+            params[key] = value[0]
+        clf = est.set_params(**params)
+        export_best_params(full_path + '/training/RF_usedparams' + str(i) + '.csv', params)
+
     print(clf)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -359,28 +403,44 @@ def objective_XGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_XGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
-    # Run Hyperparameter sweep
+    isSingle = True
+    for key, value in param_grid.items():
+        if len(value) > 1:
+            isSingle = False
+
     est = xgb.XGBClassifier()
-    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
-    study = optuna.create_study(direction='maximize', sampler=sampler)
-    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
-    study.optimize(lambda trial: objective_XGB(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    if do_plot == 'True':
-        fig = optuna.visualization.plot_parallel_coordinate(study)
-        fig.write_image(full_path+'/training/XGB_ParamOptimization_'+str(i)+'.png')
+    if not isSingle:
+        # Run Hyperparameter sweep
+        sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+        study = optuna.create_study(direction='maximize', sampler=sampler)
+        optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+        study.optimize(lambda trial: objective_XGB(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    print('Best trial:')
-    best_trial = study.best_trial
-    print('  Value: ', best_trial.value)
-    print('  Params: ')
-    for key, value in best_trial.params.items():
-        print('    {}: {}'.format(key, value))
+        if do_plot == 'True':
+            fig = optuna.visualization.plot_parallel_coordinate(study)
+            fig.write_image(full_path+'/training/XGB_ParamOptimization_'+str(i)+'.png')
 
-    # Train model using 'best' hyperparameters
-    est = xgb.XGBClassifier()
-    clf = clone(est).set_params(**best_trial.params)
-    setattr(clf, 'random_state', randSeed)
+        print('Best trial:')
+        best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
+
+        # Train model using 'best' hyperparameters
+        est = xgb.XGBClassifier()
+        clf = clone(est).set_params(**best_trial.params)
+        export_best_params(full_path + '/training/XGB_bestparams' + str(i) + '.csv', best_trial.params)
+        setattr(clf, 'random_state', randSeed)
+    else:
+        params = copy.deepcopy(param_grid)
+        for key, value in param_grid.items():
+            params[key] = value[0]
+        clf = est.set_params(**params)
+        export_best_params(full_path + '/training/XGB_usedparams' + str(i) + '.csv', params)
+
+    print(clf)
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -432,29 +492,43 @@ def objective_LGB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_LGB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
+    isSingle = True
+    for key, value in param_grid.items():
+        if len(value) > 1:
+            isSingle = False
+
     # Run Hyperparameter sweep
     est = lgb.LGBMClassifier()
-    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
-    study = optuna.create_study(direction='maximize', sampler=sampler)
-    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
-    study.optimize(lambda trial: objective_LGB(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    if do_plot == 'True':
-        fig = optuna.visualization.plot_parallel_coordinate(study)
-        fig.write_image(full_path+'/training/LGB_ParamOptimization_'+str(i)+'.png')
+    if not isSingle:
+        sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+        study = optuna.create_study(direction='maximize', sampler=sampler)
+        optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+        study.optimize(lambda trial: objective_LGB(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    print('Best trial:')
-    best_trial = study.best_trial
-    print('  Value: ', best_trial.value)
-    print('  Params: ')
-    for key, value in best_trial.params.items():
-        print('    {}: {}'.format(key, value))
+        if do_plot == 'True':
+            fig = optuna.visualization.plot_parallel_coordinate(study)
+            fig.write_image(full_path+'/training/LGB_ParamOptimization_'+str(i)+'.png')
 
-    # Train model using 'best' hyperparameters
-    est = lgb.LGBMClassifier()
-    clf = est.set_params(**best_trial.params)
+        print('Best trial:')
+        best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
+
+        # Train model using 'best' hyperparameters
+        est = lgb.LGBMClassifier()
+        clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/LGB_bestparams' + str(i) + '.csv', best_trial.params)
+    else:
+        params = copy.deepcopy(param_grid)
+        for key, value in param_grid.items():
+            params[key] = value[0]
+        clf = est.set_params(**params)
+        export_best_params(full_path + '/training/LGB_usedparams' + str(i) + '.csv', params)
+
     print(clf)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -493,30 +567,51 @@ def objective_SVM(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
               'random_state' : trial.suggest_categorical('random_state',param_grid['random_state'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
-def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
+def run_SVM_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path,training_subsample):
+    isSingle = True
+    for key, value in param_grid.items():
+        if len(value) > 1:
+            isSingle = False
+
+    if training_subsample > 0 and training_subsample < x_train.shape[0]:
+        sss = StratifiedShuffleSplit(n_splits=1, train_size=int(training_subsample), random_state=randSeed)
+        for train_index, _ in sss.split(x_train,y_train):
+            x_train = x_train[train_index]
+            y_train = y_train[train_index]
+        print('For SVM, training sample reduced to '+str(x_train.shape[0])+' instances')
+
     # Run Hyperparameter sweep
     est = SVC()
-    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
-    study = optuna.create_study(direction='maximize', sampler=sampler)
-    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
-    study.optimize(lambda trial: objective_SVM(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    if do_plot == 'True':
-        fig = optuna.visualization.plot_parallel_coordinate(study)
-        fig.write_image(full_path+'/training/SVM_ParamOptimization_'+str(i)+'.png')
+    if not isSingle:
+        sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+        study = optuna.create_study(direction='maximize', sampler=sampler)
+        optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+        study.optimize(lambda trial: objective_SVM(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    print('Best trial:')
-    best_trial = study.best_trial
-    print('  Value: ', best_trial.value)
-    print('  Params: ')
-    for key, value in best_trial.params.items():
-        print('    {}: {}'.format(key, value))
+        if do_plot == 'True':
+            fig = optuna.visualization.plot_parallel_coordinate(study)
+            fig.write_image(full_path+'/training/SVM_ParamOptimization_'+str(i)+'.png')
 
-    # Train model using 'best' hyperparameters
-    est = SVC()
-    clf = est.set_params(**best_trial.params)
+        print('Best trial:')
+        best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
+
+        # Train model using 'best' hyperparameters
+        est = SVC()
+        clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/SVM_bestparams' + str(i) + '.csv', best_trial.params)
+    else:
+        params = copy.deepcopy(param_grid)
+        for key, value in param_grid.items():
+            params[key] = value[0]
+        clf = est.set_params(**params)
+        export_best_params(full_path + '/training/SVM_usedparams' + str(i) + '.csv', params)
+
     print(clf)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -556,29 +651,43 @@ def objective_GB(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, sc
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_GB_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
+    isSingle = True
+    for key, value in param_grid.items():
+        if len(value) > 1:
+            isSingle = False
+
     # Run Hyperparameter sweep
     est = GradientBoostingClassifier()
-    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
-    study = optuna.create_study(direction='maximize', sampler=sampler)
-    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
-    study.optimize(lambda trial: objective_GB(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    if do_plot == 'True':
-        fig = optuna.visualization.plot_parallel_coordinate(study)
-        fig.write_image(full_path+'/training/GB_ParamOptimization_'+str(i)+'.png')
+    if not isSingle:
+        sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+        study = optuna.create_study(direction='maximize', sampler=sampler)
+        optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+        study.optimize(lambda trial: objective_GB(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    print('Best trial:')
-    best_trial = study.best_trial
-    print('  Value: ', best_trial.value)
-    print('  Params: ')
-    for key, value in best_trial.params.items():
-        print('    {}: {}'.format(key, value))
+        if do_plot == 'True':
+            fig = optuna.visualization.plot_parallel_coordinate(study)
+            fig.write_image(full_path+'/training/GB_ParamOptimization_'+str(i)+'.png')
 
-    # Train model using 'best' hyperparameters
-    est = GradientBoostingClassifier()
-    clf = est.set_params(**best_trial.params)
+        print('Best trial:')
+        best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
+
+        # Train model using 'best' hyperparameters
+        est = GradientBoostingClassifier()
+        clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/GB_bestparams' + str(i) + '.csv', best_trial.params)
+    else:
+        params = copy.deepcopy(param_grid)
+        for key, value in param_grid.items():
+            params[key] = value[0]
+        clf = est.set_params(**params)
+        export_best_params(full_path + '/training/GB_usedparams' + str(i) + '.csv', params)
+
     print(clf)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -615,30 +724,52 @@ def objective_KN(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, sc
         'metric': trial.suggest_categorical('metric', param_grid['metric'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
-def run_KN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
+def run_KN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path,training_subsample):
+    isSingle = True
+    for key, value in param_grid.items():
+        if len(value) > 1:
+            isSingle = False
+
+    if training_subsample > 0 and training_subsample < x_train.shape[0]:
+        sss = StratifiedShuffleSplit(n_splits=1, train_size=int(training_subsample), random_state=randSeed)
+        for train_index, _ in sss.split(x_train,y_train):
+            x_train = x_train[train_index]
+            y_train = y_train[train_index]
+        print('For KN, training sample reduced to '+str(x_train.shape[0])+' instances')
+
     # Run Hyperparameter sweep
     est = KNeighborsClassifier()
-    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
-    study = optuna.create_study(direction='maximize', sampler=sampler)
-    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
-    study.optimize(lambda trial: objective_KN(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    if do_plot == 'True':
-        fig = optuna.visualization.plot_parallel_coordinate(study)
-        fig.write_image(full_path+'/training/KN_ParamOptimization_'+str(i)+'.png')
 
-    print('Best trial:')
-    best_trial = study.best_trial
-    print('  Value: ', best_trial.value)
-    print('  Params: ')
-    for key, value in best_trial.params.items():
-        print('    {}: {}'.format(key, value))
+    if not isSingle:
+        sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+        study = optuna.create_study(direction='maximize', sampler=sampler)
+        optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+        study.optimize(lambda trial: objective_KN(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    # Train model using 'best' hyperparameters
-    est = KNeighborsClassifier()
-    clf = est.set_params(**best_trial.params)
+        if do_plot == 'True':
+            fig = optuna.visualization.plot_parallel_coordinate(study)
+            fig.write_image(full_path+'/training/KN_ParamOptimization_'+str(i)+'.png')
+
+        print('Best trial:')
+        best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
+
+        # Train model using 'best' hyperparameters
+        est = KNeighborsClassifier()
+        clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/KN_bestparams' + str(i) + '.csv', best_trial.params)
+    else:
+        params = copy.deepcopy(param_grid)
+        for key, value in param_grid.items():
+            params[key] = value[0]
+        clf = est.set_params(**params)
+        export_best_params(full_path + '/training/KN_usedparams' + str(i) + '.csv', params)
+
     print(clf)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -687,39 +818,52 @@ def objective_ANN(trial, est, x_train, y_train, randSeed, hype_cv, param_grid, s
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def run_ANN_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials,timeout,do_plot,full_path):
-    # Run Hyperparameter sweep
+    isSingle = True
+    for key, value in param_grid.items():
+        if len(value) > 1:
+            isSingle = False
+
     est = MLPClassifier()
-    sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
-    study = optuna.create_study(direction='maximize', sampler=sampler)
-    optuna.logging.set_verbosity(optuna.logging.CRITICAL)
-    study.optimize(lambda trial: objective_ANN(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
+    if not isSingle:
+        # Run Hyperparameter sweep
+        sampler = optuna.samplers.TPESampler(seed=randSeed)  # Make the sampler behave in a deterministic way.
+        study = optuna.create_study(direction='maximize', sampler=sampler)
+        optuna.logging.set_verbosity(optuna.logging.CRITICAL)
+        study.optimize(lambda trial: objective_ANN(trial, est, x_train, y_train, randSeed, 3, param_grid, 'balanced_accuracy'),n_trials=n_trials, timeout=timeout, catch=(ValueError,))
 
-    if do_plot == 'True':
-        fig = optuna.visualization.plot_parallel_coordinate(study)
-        fig.write_image(full_path+'/training/ANN_ParamOptimization_'+str(i)+'.png')
+        if do_plot == 'True':
+            fig = optuna.visualization.plot_parallel_coordinate(study)
+            fig.write_image(full_path+'/training/ANN_ParamOptimization_'+str(i)+'.png')
 
-    print('Best trial:')
-    best_trial = study.best_trial
-    print('  Value: ', best_trial.value)
-    print('  Params: ')
-    for key, value in best_trial.params.items():
-        print('    {}: {}'.format(key, value))
+        print('Best trial:')
+        best_trial = study.best_trial
+        print('  Value: ', best_trial.value)
+        print('  Params: ')
+        for key, value in best_trial.params.items():
+            print('    {}: {}'.format(key, value))
 
-    # Handle special parameter requirement for ANN
-    layers = []
-    for j in range(best_trial.params['n_layers']):
-        layer_name = 'n_units_l' + str(j)
-        layers.append(best_trial.params[layer_name])
-        del best_trial.params[layer_name]
+        # Handle special parameter requirement for ANN
+        layers = []
+        for j in range(best_trial.params['n_layers']):
+            layer_name = 'n_units_l' + str(j)
+            layers.append(best_trial.params[layer_name])
+            del best_trial.params[layer_name]
 
-    best_trial.params['hidden_layer_sizes'] = tuple(layers)
-    del best_trial.params['n_layers']
+        best_trial.params['hidden_layer_sizes'] = tuple(layers)
+        del best_trial.params['n_layers']
 
-    # Train model using 'best' hyperparameters
-    est = MLPClassifier()
-    clf = est.set_params(**best_trial.params)
+        # Train model using 'best' hyperparameters
+        est = MLPClassifier()
+        clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/ANN_bestparams' + str(i) + '.csv', best_trial.params)
+    else:
+        params = copy.deepcopy(param_grid)
+        for key, value in param_grid.items():
+            params[key] = value[0]
+        clf = est.set_params(**params)
+        export_best_params(full_path + '/training/ANN_usedparams' + str(i) + '.csv', params)
+
     print(clf)
-
     model = clf.fit(x_train, y_train)
 
     # Save model
@@ -782,11 +926,13 @@ def run_eLCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trial
 
         # Train model using 'best' hyperparameters
         clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/eLCS_bestparams' + str(i) + '.csv', best_trial.params)
     else:
         params = copy.deepcopy(param_grid)
         for key, value in param_grid.items():
             params[key] = value[0]
         clf = est.set_params(**params)
+        export_best_params(full_path + '/training/eLCS_usedparams' + str(i) + '.csv', params)
 
     print(clf)
     model = clf.fit(x_train, y_train)
@@ -850,11 +996,13 @@ def run_XCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_trials
 
         # Train model using 'best' hyperparameters
         clf = est.set_params(**best_trial.params)
+        export_best_params(full_path + '/training/XCS_bestparams' + str(i) + '.csv', best_trial.params)
     else:
         params = copy.deepcopy(param_grid)
         for key, value in param_grid.items():
             params[key] = value[0]
         clf = est.set_params(**params)
+        export_best_params(full_path + '/training/XCS_usedparams' + str(i) + '.csv', params)
 
     print(clf)
     model = clf.fit(x_train, y_train)
@@ -889,7 +1037,8 @@ def objective_ExSTraCS(trial, est, x_train, y_train, randSeed, hype_cv, param_gr
     params = {'learning_iterations': trial.suggest_categorical('learning_iterations', param_grid['learning_iterations']),
               'N': trial.suggest_categorical('N', param_grid['N']), 'nu': trial.suggest_categorical('nu', param_grid['nu']),
               'random_state' : trial.suggest_categorical('random_state',param_grid['random_state']),
-              'expert_knowledge':param_grid['expert_knowledge']}
+              'expert_knowledge':param_grid['expert_knowledge'],
+              'rule_compaction':trial.suggest_categorical('rule_compaction', param_grid['rule_compaction'])}
     return hyper_eval(est, x_train, y_train, randSeed, hype_cv, params, scoring_metric)
 
 def get_FI_subset_ExSTraCS(full_path,i,instance_label,class_label,filter_poor_features):
@@ -964,6 +1113,7 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
 
         # Train model using 'best' hyperparameters
         clf = est.set_params(**best_trial.params)
+        export_best_params(full_path+'/training/ExSTraCS_bestparams'+str(i)+'.csv',best_trial.params)
     else:
         params = copy.deepcopy(param_grid)
         for key, value in param_grid.items():
@@ -972,6 +1122,7 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
             else:
                 params[key] = value[0]
         clf = est.set_params(**params)
+        export_best_params(full_path + '/training/ExSTraCS_usedparams' + str(i) + '.csv', params)
 
     print(clf)
     model = clf.fit(x_train, y_train)
@@ -1001,6 +1152,13 @@ def run_ExSTraCS_full(x_train, y_train, x_test, y_test,randSeed,i,param_grid,n_t
 
     return [metricList, fpr, tpr, roc_auc, prec, recall, prec_rec_auc, ave_prec, fi]
 
+def export_best_params(file_name,param_grid):
+    best_params_copy = param_grid
+    for best in best_params_copy:
+        best_params_copy[best] = [best_params_copy[best]]
+    df = pd.DataFrame.from_dict(best_params_copy)
+    df.to_csv(file_name, index=False)
+
 def classEval(y_true, y_pred):
     # calculate and store evaluation metrics
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
@@ -1017,7 +1175,11 @@ def classEval(y_true, y_pred):
     else:
         sp = tn / float(tn + fp)
 
-    return [bac, ac, f1, re, sp, pr, tp, tn, fp, fn]
+    npv = tn/(tn+fn)
+    lrp = re/(1-sp)
+    lrm = (1-re)/sp
+
+    return [bac, ac, f1, re, sp, pr, tp, tn, fp, fn, npv, lrp, lrm]
 
 def computeImportances(clf, x_train, y_train, x_test, y_test, bac):
     #Reruns the model n times (once for each feature), and evaluates performance change as a standard of feature importance
@@ -1050,60 +1212,28 @@ def computeImportances(clf, x_train, y_train, x_test, y_test, bac):
 
     return featureImpList
 
-def hyperparameters(random_state):
+def hyperparameters(random_state,do_lcs_sweep,nu,iter,N):
     param_grid = {}
     #######EDITABLE CODE################################################################################################
     # Logistic Regression
-    """ Smaller datasets
-    param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
-                     'solver': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
-                     'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
-                     'random_state':[random_state]}
-    """
-    """ Large sample size datasets
-    param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
-                     'solver': ['sag', 'saga'],
-                     'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
-                     'random_state':[random_state]}
-    """
-
     param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
                      'solver': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
                      'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
                      'random_state':[random_state]}
 
     # Decision Tree
-    """ Any datasets
-    param_grid_DT = {'criterion': ['gini', 'entropy'],'splitter': ['best', 'random'],'max_depth': [1, 30],
-                     'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
-                     'class_weight': [None, 'balanced'],
-                     'random_state':[random_state]}
-    """
     param_grid_DT = {'criterion': ['gini', 'entropy'],'splitter': ['best', 'random'],'max_depth': [1, 30],
                      'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
                      'class_weight': [None, 'balanced'],
                      'random_state':[random_state]}
 
     # Random Forest
-    """ Any datasets
-    param_grid_RF = {'n_estimators': [10, 1000],'criterion': ['gini', 'entropy'],'max_depth': [1, 30],
-                     'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
-                     'bootstrap': [True],'oob_score': [False, True],'class_weight': [None, 'balanced'],
-                     'random_state':[random_state]}
-    """
     param_grid_RF = {'n_estimators': [10, 1000],'criterion': ['gini', 'entropy'],'max_depth': [1, 30],
                      'min_samples_split': [2, 50],'min_samples_leaf': [1, 50],'max_features': [None, 'auto', 'log2'],
                      'bootstrap': [True],'oob_score': [False, True],'class_weight': [None, 'balanced'],
                      'random_state':[random_state]}
 
     # XG Boost - note: class weight balance is included as option internally
-    """ Any datasets
-    param_grid_XGB = {'booster': ['gbtree'],'objective': ['binary:logistic'],'verbosity': [0],'reg_lambda': [1e-8, 1.0],
-                      'alpha': [1e-8, 1.0],'eta': [1e-8, 1.0],'gamma': [1e-8, 1.0],'max_depth': [1, 30],
-                      'grow_policy': ['depthwise', 'lossguide'],'n_estimators': [10, 1000],'min_samples_split': [2, 50],
-                      'min_samples_leaf': [1, 50],'subsample': [0.5, 1.0],'min_child_weight': [0.1, 10],
-                      'colsample_bytree': [0.1, 1.0],'nthread':[1],'random_state':[random_state]}
-    """
     param_grid_XGB = {'booster': ['gbtree'],'objective': ['binary:logistic'],'verbosity': [0],'reg_lambda': [1e-8, 1.0],
                       'alpha': [1e-8, 1.0],'eta': [1e-8, 1.0],'gamma': [1e-8, 1.0],'max_depth': [1, 30],
                       'grow_policy': ['depthwise', 'lossguide'],'n_estimators': [10, 1000],'min_samples_split': [2, 50],
@@ -1111,66 +1241,44 @@ def hyperparameters(random_state):
                       'colsample_bytree': [0.1, 1.0],'nthread':[1],'random_state':[random_state]}
 
     # LG Boost - note: class weight balance is included as option internally
-    """ Any datasets
-    param_grid_LGB = {'objective': ['binary'],'metric': ['binary_logloss'],'verbosity': [-1],'boosting_type': ['gbdt'],
-                      'num_leaves': [2, 256],'max_depth': [1, 30],'lambda_l1': [1e-8, 10.0],'lambda_l2': [1e-8, 10.0],
-                      'feature_fraction': [0.4, 1.0],'bagging_fraction': [0.4, 1.0],'bagging_freq': [1, 7],
-                      'min_child_samples': [5, 100],'n_estimators': [10, 1000],'num_threads':[1],'random_state':[random_state]}
-    """
     param_grid_LGB = {'objective': ['binary'],'metric': ['binary_logloss'],'verbosity': [-1],'boosting_type': ['gbdt'],
                       'num_leaves': [2, 256],'max_depth': [1, 30],'lambda_l1': [1e-8, 10.0],'lambda_l2': [1e-8, 10.0],
                       'feature_fraction': [0.4, 1.0],'bagging_fraction': [0.4, 1.0],'bagging_freq': [1, 7],
                       'min_child_samples': [5, 100],'n_estimators': [10, 1000],'num_threads':[1],'random_state':[random_state]}
 
     # SVM - not approppriate for large instance spaces
-    """ Smaller datasets
-    param_grid_SVM = {'kernel': ['linear', 'poly', 'rbf'],'C': [0.1, 1000],'gamma': ['scale'],'degree': [1, 6],
-                      'probability': [True],'class_weight': [None, 'balanced'],'random_state':[random_state]}
-    """
     param_grid_SVM = {'kernel': ['linear', 'poly', 'rbf'],'C': [0.1, 1000],'gamma': ['scale'],'degree': [1, 6],
                       'probability': [True],'class_weight': [None, 'balanced'],'random_state':[random_state]}
 
     # ANN
-    """ Any datasets
-    param_grid_ANN = {'n_layers': [1, 3],'layer_size': [1, 100],'activation': ['identity', 'logistic', 'tanh', 'relu'],
-                      'learning_rate': ['constant', 'invscaling', 'adaptive'],'momentum': [.1, .9],
-                      'solver': ['sgd', 'adam'],'batch_size': ['auto'],'alpha': [0.0001, 0.05],'max_iter': [200],'random_state':[random_state]}
-    """
     param_grid_ANN = {'n_layers': [1, 3],'layer_size': [1, 100],'activation': ['identity', 'logistic', 'tanh', 'relu'],
                       'learning_rate': ['constant', 'invscaling', 'adaptive'],'momentum': [.1, .9],
                       'solver': ['sgd', 'adam'],'batch_size': ['auto'],'alpha': [0.0001, 0.05],'max_iter': [200],'random_state':[random_state]}
 
-    # ExSTraCS
-    """ Smaller datasets
-    param_grid_ExSTraCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
-    """
-    param_grid_ExSTraCS = {'learning_iterations': [20000],'N': [1000],'nu': [10],'random_state':[random_state],'rule_compaction':[None],'expert_knowledge':[None]}
+    if do_lcs_sweep:
+        # ExSTraCS
+        param_grid_ExSTraCS = {'learning_iterations': [10000,50000,200000],'N': [500, 1000, 2000],'nu': [1,10],'random_state':[random_state],'rule_compaction':[None]}
 
-    # eLCS
-    """ Smaller datasets
-    param_grid_eLCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
-    """
-    param_grid_eLCS = {'learning_iterations': [200000],'N': [2000],'nu': [1],'random_state':[random_state]}
+        # eLCS
+        param_grid_eLCS = {'learning_iterations': [10000,50000,200000],'N': [500,1000,2000],'nu': [1,10],'random_state':[random_state]}
 
-    # XCS
-    """ Smaller datasets
-    param_grid_XCS = {'learning_iterations':[200000],'N':[500,1000,2000],'nu':[1,10]}
-    """
-    param_grid_XCS = {'learning_iterations': [200000],'N': [2000],'nu': [1],'random_state':[random_state]}
+        # XCS
+        param_grid_XCS = {'learning_iterations': [10000,50000,200000],'N': [500,1000,2000],'nu': [1],'random_state':[random_state]}
+    else:
+        # ExSTraCS
+        param_grid_ExSTraCS = {'learning_iterations': [iter], 'N': [N], 'nu': [nu], 'random_state': [random_state], 'rule_compaction': [None]}
+
+        # eLCS
+        param_grid_eLCS = {'learning_iterations': [iter], 'N': [N], 'nu': [nu], 'random_state': [random_state]}
+
+        # XCS
+        param_grid_XCS = {'learning_iterations': [iter], 'N': [N], 'nu': [nu], 'random_state': [random_state]}
 
     # GB
-    """ Smaller datasets
-    param_grid_GB = {'n_estimators': [10, 1000],'loss': ['deviance', 'exponential'], 'learning_rate': [.0001, 0.3], 'min_samples_leaf': [1, 50],
-                     'min_samples_split': [2, 50], 'max_depth': [1, 30],'random_state':[random_state]}
-    """
     param_grid_GB = {'n_estimators': [10, 1000],'loss': ['deviance', 'exponential'], 'learning_rate': [.0001, 0.3], 'min_samples_leaf': [1, 50],
                      'min_samples_split': [2, 50], 'max_depth': [1, 30],'random_state':[random_state]}
 
     # KN - not appropriate for large instance spaces
-    """ Smaller datasets
-    param_grid_KN = {'n_neighbors': [1, 100], 'weights': ['uniform', 'distance'], 'p': [1, 5],
-                     'metric': ['euclidean', 'minkowski']}
-    """
     param_grid_KN = {'n_neighbors': [1, 100], 'weights': ['uniform', 'distance'], 'p': [1, 5],
                      'metric': ['euclidean', 'minkowski']}
 
@@ -1191,4 +1299,4 @@ def hyperparameters(random_state):
     return param_grid
 
 if __name__ == '__main__':
-    job(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],int(sys.argv[5]),int(sys.argv[6]),int(sys.argv[7]),sys.argv[8],sys.argv[9],sys.argv[10],int(sys.argv[11]),int(sys.argv[12]),sys.argv[13])
+    job(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],int(sys.argv[5]),int(sys.argv[6]),int(sys.argv[7]),sys.argv[8],sys.argv[9],sys.argv[10],int(sys.argv[11]),int(sys.argv[12]),sys.argv[13],sys.argv[14],int(sys.argv[15]),int(sys.argv[16]),int(sys.argv[17]),int(sys.argv[18]))
