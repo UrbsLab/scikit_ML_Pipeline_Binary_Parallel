@@ -13,7 +13,7 @@ Sample Run Command:
 python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
 
 Local Command:
-python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False --do-ExSTraCS True --do-NB True --do-LR True --do-KN True --subsample 1000
+python ModelMain.py --output-path /Users/robert/Desktop/outputs --experiment-name randomtest2 --run-parallel False --do-ExSTraCS True --do-NB True --do-LR True --do-KN True --subsample 1000
 '''
 
 def main(argv):

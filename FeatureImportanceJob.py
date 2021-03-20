@@ -4,13 +4,13 @@ import numpy as np
 import time
 import pandas as pd
 from sklearn.feature_selection import mutual_info_classif
-from skrebate import MultiSURF
+from skrebate import MultiSURF, TURF
 import csv
 import pickle
 import os
 
 '''Phase 3 of Machine Learning Analysis Pipeline:'''
-def job(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,algorithm):
+def job(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,algorithm,njobs,use_TURF,TURF_pct):
     job_start_time = time.time()
     random.seed(random_state)
     np.random.seed(random_state)
@@ -28,6 +28,7 @@ def job(cv_train_path,experiment_path,random_state,class_label,instance_label,in
         header.remove(instance_label)
     cvCount = cv_train_path.split('/')[-1].split("_")[-2]
 
+    use_TURF = use_TURF != 'False'
 
     #Mutual Information
     if algorithm == 'mi':
@@ -51,7 +52,10 @@ def job(cv_train_path,experiment_path,random_state,class_label,instance_label,in
         #Run MultiSURF
         outname = "multisurf"
         outpath = experiment_path + '/' + dataset_name + "/"+outname+"/scores_cv_" + str(cvCount) + '.csv'
-        clf = MultiSURF().fit(dataFeatures, dataPhenotypes)
+        if use_TURF:
+            clf = TURF(MultiSURF(n_jobs=njobs),pct=TURF_pct).fit(dataFeatures,dataPhenotypes)
+        else:
+            clf = MultiSURF(n_jobs=njobs).fit(dataFeatures, dataPhenotypes)
         scores = clf.feature_importances_
     else:
         raise Exception("Feature importance algorithm not found")
@@ -102,4 +106,4 @@ def sort_save_fi_scores(scores, ordered_feature_names, filename, algo_name):
 
 ########################################################################################################################
 if __name__ == '__main__':
-    job(sys.argv[1],sys.argv[2],int(sys.argv[3]),sys.argv[4],sys.argv[5],int(sys.argv[6]),sys.argv[7])
+    job(sys.argv[1],sys.argv[2],int(sys.argv[3]),sys.argv[4],sys.argv[5],int(sys.argv[6]),sys.argv[7],int(sys.argv[8]),sys.argv[9],float(sys.argv[10]))

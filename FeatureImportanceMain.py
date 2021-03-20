@@ -13,7 +13,7 @@ Sample Run Command:
 python FeatureImportanceMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
 
 Local Command:
-python FeatureImportanceMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False
+python FeatureImportanceMain.py --output-path /Users/robert/Desktop/outputs --experiment-name randomtest2 --run-parallel False
 '''
 
 def main(argv):
@@ -25,6 +25,8 @@ def main(argv):
     #Defaults available
     parser.add_argument('--do-mutual-info', dest='do_mutual_info', type=str, help='do mutual information analysis',default="True")
     parser.add_argument('--do-multisurf', dest='do_multisurf', type=str, help='do multiSURF analysis',default="True")
+    parser.add_argument('--use-turf', dest='use_TURF', type=str, help='use TURF wrapper over MultiSURF', default="False")
+    parser.add_argument('--turf-pct', dest='TURF_pct', type=float, help='TURF param',default=0.5)
     parser.add_argument('--n-jobs', dest='n_jobs', type=int, help='number of cores dedicated to running algorithm; setting to -1 will use all available cores', default=1)
     parser.add_argument('--instance-subset', dest='instance_subset', type=int, help='sample subset size to use with multiSURF',default=2000)
     parser.add_argument('--run-parallel',dest='run_parallel',type=str,help='path to directory containing datasets',default="True")
@@ -38,6 +40,8 @@ def main(argv):
     experiment_name = options.experiment_name
     do_mutual_info = options.do_mutual_info
     do_multisurf = options.do_multisurf
+    use_TURF = options.use_TURF
+    turf_pct = options.TURF_pct
     n_jobs = options.n_jobs
     instance_subset = options.instance_subset
     run_parallel = options.run_parallel == 'True'
@@ -75,21 +79,21 @@ def main(argv):
                 if not os.path.exists(full_path+"/mutualinformation"):
                     os.mkdir(full_path+"/mutualinformation")
                 for cv_train_path in glob.glob(full_path+"/CVDatasets/*_CV_*Train.csv"):
-                    command_text = '/FeatureImportanceJob.py ' + cv_train_path+" "+experiment_path+" "+str(random_state)+" "+class_label+" "+instance_label+" " +str(instance_subset)+" mi"
+                    command_text = '/FeatureImportanceJob.py ' + cv_train_path+" "+experiment_path+" "+str(random_state)+" "+class_label+" "+instance_label+" " +str(instance_subset)+" mi "+str(n_jobs)+' '+str(use_TURF)+' '+str(turf_pct)
                     if run_parallel:
                         submitClusterJob(command_text, experiment_path,reserved_memory,maximum_memory)
                     else:
-                        submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,'mi')
+                        submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,'mi',n_jobs,use_TURF,turf_pct)
 
             if do_multisurf == 'True':
                 if not os.path.exists(full_path+"/multisurf"):
                     os.mkdir(full_path+"/multisurf")
                 for cv_train_path in glob.glob(full_path+"/CVDatasets/*_CV_*Train.csv"):
-                    command_text = '/FeatureImportanceJob.py ' + cv_train_path+" "+experiment_path+" "+str(random_state)+" "+class_label+" "+instance_label+" " +str(instance_subset)+" ms"
+                    command_text = '/FeatureImportanceJob.py ' + cv_train_path+" "+experiment_path+" "+str(random_state)+" "+class_label+" "+instance_label+" " +str(instance_subset)+" ms "+str(n_jobs)+' '+str(use_TURF)+' '+str(turf_pct)
                     if run_parallel:
                         submitClusterJob(command_text, experiment_path,reserved_memory,maximum_memory)
                     else:
-                        submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,'ms')
+                        submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,'ms',n_jobs,use_TURF,turf_pct)
 
         #Update metadata
         if metadata.shape[0] == 7: #Only update if metadata below hasn't been added before (i.e. in a previous phase 2 run)
@@ -128,8 +132,8 @@ def main(argv):
             print("Above Phase 3 Jobs Not Completed")
         print()
 
-def submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,algorithm):
-    FeatureImportanceJob.job(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,algorithm)
+def submitLocalJob(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,algorithm,n_jobs,use_TURF,turf_pct):
+    FeatureImportanceJob.job(cv_train_path,experiment_path,random_state,class_label,instance_label,instance_subset,algorithm,n_jobs,use_TURF,turf_pct)
 
 def submitClusterJob(command_text,experiment_path,reserved_memory,maximum_memory):
     job_ref = str(time.time())

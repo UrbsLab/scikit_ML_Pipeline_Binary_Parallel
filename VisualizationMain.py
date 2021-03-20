@@ -10,7 +10,7 @@ Sample Run Command:
 python VisualizationMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1
 
 Local Command:
-python VisualizationMain.py --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False
+python VisualizationMain.py --output-path /Users/robert/Desktop/outputs --experiment-name randomtest2 --run-parallel False
 '''
 
 def main(argv):

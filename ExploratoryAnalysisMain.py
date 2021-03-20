@@ -14,7 +14,7 @@ python ExploratoryAnalysisMain.py --data-path /Users/robert/Desktop/Datasets --o
 Local Command:
 python ExploratoryAnalysisMain.py --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False --cv 3
 OR
-python ExploratoryAnalysisMain.py --instance-label Instance --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name test1 --run-parallel False --cv 3
+python ExploratoryAnalysisMain.py --instance-label Instance --data-path /Users/robert/Desktop/Datasets --output-path /Users/robert/Desktop/outputs --experiment-name randomtest2 --run-parallel False --cv 3
 
 
 WARNINGS:
