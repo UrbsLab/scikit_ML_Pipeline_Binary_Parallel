@@ -31,7 +31,7 @@ def job(experiment_path):
             algorithms.append(algo_name)
 
     # Get Metrics
-    data = pd.read_csv(dataset_directory_paths[0] + '/training/results/Summary_performance.csv', sep=',')
+    data = pd.read_csv(dataset_directory_paths[0] + '/training/results/Summary_performance_mean.csv', sep=',')
     metrics = data.columns.values.tolist()[1:]
 
     # Significance Cutoff

@@ -1215,7 +1215,7 @@ def computeImportances(clf, x_train, y_train, x_test, y_test, bac):
 def hyperparameters(random_state,do_lcs_sweep,nu,iter,N):
     param_grid = {}
     #######EDITABLE CODE################################################################################################
-    # Logistic Regression
+    # Logistic Regression - can take a longer while in larger instance spaces
     param_grid_LR = {'penalty': ['l2', 'l1'],'C': [1e-5, 1e5],'dual': [True, False],
                      'solver': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
                      'class_weight': [None, 'balanced'],'max_iter': [10, 1000],
@@ -1233,14 +1233,14 @@ def hyperparameters(random_state,do_lcs_sweep,nu,iter,N):
                      'bootstrap': [True],'oob_score': [False, True],'class_weight': [None, 'balanced'],
                      'random_state':[random_state]}
 
-    # XG Boost - note: class weight balance is included as option internally
+    # XG Boost - not great for large instance spaces (limited completion). note: class weight balance is included as option internally
     param_grid_XGB = {'booster': ['gbtree'],'objective': ['binary:logistic'],'verbosity': [0],'reg_lambda': [1e-8, 1.0],
                       'alpha': [1e-8, 1.0],'eta': [1e-8, 1.0],'gamma': [1e-8, 1.0],'max_depth': [1, 30],
                       'grow_policy': ['depthwise', 'lossguide'],'n_estimators': [10, 1000],'min_samples_split': [2, 50],
                       'min_samples_leaf': [1, 50],'subsample': [0.5, 1.0],'min_child_weight': [0.1, 10],
                       'colsample_bytree': [0.1, 1.0],'nthread':[1],'random_state':[random_state]}
 
-    # LG Boost - note: class weight balance is included as option internally
+    # LG Boost - note: class weight balance is included as option internally (still takes a while on large instance spaces)
     param_grid_LGB = {'objective': ['binary'],'metric': ['binary_logloss'],'verbosity': [-1],'boosting_type': ['gbdt'],
                       'num_leaves': [2, 256],'max_depth': [1, 30],'lambda_l1': [1e-8, 10.0],'lambda_l2': [1e-8, 10.0],
                       'feature_fraction': [0.4, 1.0],'bagging_fraction': [0.4, 1.0],'bagging_freq': [1, 7],
@@ -1250,7 +1250,7 @@ def hyperparameters(random_state,do_lcs_sweep,nu,iter,N):
     param_grid_SVM = {'kernel': ['linear', 'poly', 'rbf'],'C': [0.1, 1000],'gamma': ['scale'],'degree': [1, 6],
                       'probability': [True],'class_weight': [None, 'balanced'],'random_state':[random_state]}
 
-    # ANN
+    # ANN - bad for large instances spaces
     param_grid_ANN = {'n_layers': [1, 3],'layer_size': [1, 100],'activation': ['identity', 'logistic', 'tanh', 'relu'],
                       'learning_rate': ['constant', 'invscaling', 'adaptive'],'momentum': [.1, .9],
                       'solver': ['sgd', 'adam'],'batch_size': ['auto'],'alpha': [0.0001, 0.05],'max_iter': [200],'random_state':[random_state]}

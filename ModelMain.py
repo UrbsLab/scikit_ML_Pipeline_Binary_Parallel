@@ -43,7 +43,7 @@ def main(argv):
     parser.add_argument('--lcs-timeout', dest='lcs_timeout', type=int, help='seconds until hyperparameter sweep stops for LCS algorithms', default=1200)
     parser.add_argument('--do-LCS-sweep', dest='do_LCS_sweep', type=str, help='do LCS hyperparam tuning or use below params',default='False')
     parser.add_argument('--nu', dest='nu', type=int, help='universal LCS nu param', default=1)
-    parser.add_argument('--iter', dest='iter', type=int, help='universal LCS # learning iterations param', default=20000)
+    parser.add_argument('--iter', dest='iter', type=int, help='universal LCS # learning iterations param', default=200000)
     parser.add_argument('--N', dest='N', type=int, help='universal LCS N param', default=2000)
     parser.add_argument('--subsample', dest='training_subsample', type=int, help='for long running algos, option to subsample training set', default=0)
     parser.add_argument('--export-hyper-sweep', dest='export_hyper_sweep_plots', type=str, default='True')
